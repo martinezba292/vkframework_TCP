@@ -8,6 +8,10 @@
 #include "resource_manager.h"
 #include "vertex_buffer.h"
 #include "user_main.h"
+#include "Components/geometry.h"
+#include "glm/gtc/matrix_transform.hpp"
+#define GLM_FORCE_RADIANS
+#include <chrono>
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +631,7 @@ void VulkanApp::createGraphicsPipeline()
   rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
   rasterizer.lineWidth = 1.0f;
   rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-  rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+  rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
   rasterizer.depthBiasEnable = VK_FALSE;
   rasterizer.depthBiasConstantFactor = 0.0f;
@@ -673,10 +677,10 @@ void VulkanApp::createGraphicsPipeline()
   /*Pipeline Layout*/
   VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
   pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutInfo.setLayoutCount = 0;
-  pipelineLayoutInfo.pSetLayouts = nullptr;
-  pipelineLayoutInfo.pushConstantRangeCount = 0;
-  pipelineLayoutInfo.pPushConstantRanges = nullptr;
+  pipelineLayoutInfo.setLayoutCount = 1;
+  pipelineLayoutInfo.pSetLayouts = &context_->descriptorLayout;
+  //pipelineLayoutInfo.pushConstantRangeCount = 0;
+  //pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
   vkCreatePipelineLayout(context_->logDevice_, &pipelineLayoutInfo, nullptr, &context_->pipelineLayout);
   //assert(vkCreatePipelineLayout(context_->logDevice_, &pipelineLayoutInfo, nullptr, &context_->pipelineLayout) == VK_SUCCESS);
@@ -880,6 +884,133 @@ void VulkanApp::createIndexBuffers()
   }
 }
 
+void VulkanApp::createDescriptorSetLayout()
+{
+  VkDescriptorSetLayoutBinding uboLayoutBinding{};
+  uboLayoutBinding.binding = 0;
+  uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  uboLayoutBinding.descriptorCount = 1;
+
+  uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  uboLayoutBinding.pImmutableSamplers = nullptr;
+
+  VkDescriptorSetLayoutCreateInfo layoutInfo{};
+  layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  layoutInfo.bindingCount = 1;
+  layoutInfo.pBindings = &uboLayoutBinding;
+
+  if (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr, &context_->descriptorLayout) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to create descriptor set layout");
+  }
+  
+}
+
+void VulkanApp::createDescriptorPool()
+{
+  VkDescriptorPoolSize poolSize{};
+  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSize.descriptorCount = static_cast<uint32>(context_->swapchainImageViews.size());
+
+  VkDescriptorPoolCreateInfo poolInfo{};
+  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.poolSizeCount = 1;
+  poolInfo.pPoolSizes = &poolSize;
+
+  poolInfo.maxSets = static_cast<uint32>(context_->swapchainImageViews.size());
+
+  if (vkCreateDescriptorPool(context_->logDevice_, &poolInfo,
+                             nullptr, &context_->descriptorPool) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to create descriptor pool");
+  }
+}
+
+void VulkanApp::createDescriptorSets()
+{
+  std::vector<VkDescriptorSetLayout> layouts(context_->swapchainImageViews.size(), 
+                                             context_->descriptorLayout);
+
+  VkDescriptorSetAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  allocInfo.descriptorPool = context_->descriptorPool;
+  allocInfo.descriptorSetCount = static_cast<uint32>(context_->swapchainImageViews.size());
+  allocInfo.pSetLayouts = layouts.data();
+
+  context_->descriptorSets.resize(context_->swapchainImageViews.size());
+  if (vkAllocateDescriptorSets(context_->logDevice_, &allocInfo, 
+                               context_->descriptorSets.data()) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to allocate descriptor sets");
+  }
+
+  Resources* resources = ResourceManager::Get()->getResources();
+  for (size_t i = 0; i < context_->swapchainImageViews.size(); i++) {
+    VkDescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = resources->uniformBuffers[i];
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof(UniformBufferObject);
+
+    VkWriteDescriptorSet descriptorWrite{};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = context_->descriptorSets[i];
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    descriptorWrite.pImageInfo = nullptr;
+    descriptorWrite.pTexelBufferView = nullptr;
+
+    vkUpdateDescriptorSets(context_->logDevice_, 1, &descriptorWrite, 0, nullptr);
+  }
+}
+
+void VulkanApp::createUniformBuffers()
+{
+  VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+  Resources* resources = ResourceManager::Get()->getResources();
+
+  uint32 swapChainImageCount = context_->swapchainImageViews.size();
+  resources->uniformBuffers.resize(swapChainImageCount);
+  resources->uniformBufferMemory.resize(swapChainImageCount);
+
+  for (size_t i = 0; i < swapChainImageCount; i++) {
+    createInternalBuffer(*context_, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                         resources->uniformBuffers[i], resources->uniformBufferMemory[i]);
+  }
+}
+
+void VulkanApp::updateUniformBuffers(uint32 index)
+{
+  static auto startTime = std::chrono::high_resolution_clock::now();
+
+  auto currentTime = std::chrono::high_resolution_clock::now();
+  float time = std::chrono::duration<float, std::chrono::seconds::period>
+                                        (currentTime - startTime).count();
+
+  UniformBufferObject ubo{};
+  ubo.model = glm::rotate(glm::mat4(1.0f), 
+                          time * glm::radians(90.0f), 
+                          glm::vec3(0.0f, 0.0f, 1.0f));
+
+  ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), 
+                         glm::vec3(0.0f, 0.0f, 0.0f), 
+                         glm::vec3(0.0f, 0.0f, 1.0f));
+
+  float aspectRatio = context_->swapchainDimensions.width / (float)context_->swapchainDimensions.height;
+  ubo.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 10.0f);
+
+  ubo.proj[1][1] *= -1;
+
+  Resources* resources = ResourceManager::Get()->getResources();
+  void* data;
+  vkMapMemory(context_->logDevice_, resources->uniformBufferMemory[index], 0, sizeof(ubo), 0, &data);
+  memcpy(data, &ubo, sizeof(ubo));
+  vkUnmapMemory(context_->logDevice_, resources->uniformBufferMemory[index]);
+}
+
 //void VulkanApp::createCommandBuffers()
 //{
 //  commandBuffers.resize(framebuffer->swapChainFramebuffer.size());
@@ -1081,11 +1212,18 @@ void VulkanApp::render(uint32 index)
   vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context_->pipeline);
   vkCmdBindVertexBuffers(cmd_buffer, 0, 1, vertexBuffers, offsets);
   vkCmdBindIndexBuffer(cmd_buffer, intResources->bufferIndices, 0, VK_INDEX_TYPE_UINT32);
-  for (size_t i = 0; i < intResources->vertex_data.size(); i++) {
-    InternalVertexData vertex_data = intResources->vertex_data[i];
-    uint32 first_vertex = vertex_data.offset;
-    uint32 first_index = vertex_data.index_offset;
-    vkCmdDrawIndexed(cmd_buffer, static_cast<uint32>(vertex_data.indices.size()), 1, first_index, first_vertex, 0);
+  vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                          context_->pipelineLayout,0, 1, 
+                          &context_->descriptorSets[index], 0, nullptr);
+  for (auto& entity : Scene::sceneEntities) {
+
+    Geometry* geo = entity.getComponent<Geometry>(kComponentType_Geometry);
+    if (geo) {
+      InternalVertexData vertex_data = intResources->vertex_data[geo->getId()];
+      uint32 first_vertex = vertex_data.offset;
+      uint32 first_index = vertex_data.index_offset;
+      vkCmdDrawIndexed(cmd_buffer, static_cast<uint32>(vertex_data.indices.size()), 1, first_index, first_vertex, 0);
+    }
   }
 
   vkCmdEndRenderPass(cmd_buffer);
@@ -1129,51 +1267,6 @@ int32 VulkanApp::presentImage(uint32 index)
 
 void VulkanApp::drawFrame()
 {
-  /*uint32 imageIndex;
-  int32 currentFrame = app_data_->frameCount;
-
-  vkWaitForFences(app_data_->logDevice_, 1, &app_data_->inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-
-  vkAcquireNextImageKHR(app_data_->logDevice_, framebuffer->swapChain, UINT64_MAX, app_data_->imageAvaliable[currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-  uint32 semaphoreCount = 1;
-  VkSemaphore waitSemaphores[] = { app_data_->imageAvaliable[currentFrame] };
-  VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-  submitInfo.waitSemaphoreCount = semaphoreCount;
-  submitInfo.pWaitSemaphores = waitSemaphores;
-  submitInfo.pWaitDstStageMask = waitStages;
-
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
-
-  VkSemaphore signalSemaphore[] = { app_data_->renderingFinished[currentFrame] };
-  submitInfo.signalSemaphoreCount = semaphoreCount;
-  submitInfo.pSignalSemaphores = signalSemaphore;
-
-
-  vkResetFences(app_data_->logDevice_, 1, &app_data_->inFlightFences[currentFrame]);
-  assert(vkQueueSubmit(app_data_->graphicsQueue, 1, &submitInfo, app_data_->inFlightFences[currentFrame]) == VK_SUCCESS);
-
-  app_data_->frameCount = (currentFrame + 1) % k_max_frames;
-
-  VkPresentInfoKHR presentInfo{};
-  presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-  presentInfo.pWaitSemaphores = signalSemaphore;
-  presentInfo.waitSemaphoreCount = 1;
-
-  VkSwapchainKHR swapChains[] = { framebuffer->swapChain };
-  presentInfo.pSwapchains = swapChains;
-  presentInfo.swapchainCount = 1;
-  presentInfo.pImageIndices = &imageIndex;
-
-  presentInfo.pResults = nullptr;
-
-  vkQueuePresentKHR(app_data_->presentQueue, &presentInfo);*/
-
   uint32 imageIndex;
 
   auto result = acquireNextImage(&imageIndex);
@@ -1182,6 +1275,7 @@ void VulkanApp::drawFrame()
     vkQueueWaitIdle(context_->graphicsQueue);
     return;
   }
+  updateUniformBuffers(imageIndex);
 
   render(imageIndex);
   result = presentImage(imageIndex);
@@ -1193,7 +1287,6 @@ VulkanApp::VulkanApp()
   debug_data_ = new DebugUtils();
   user_app_ = new UserMain();
   context_->physDevice_ = VK_NULL_HANDLE;
-  //context_->frameCount = 0;
 }
 
 VulkanApp::~VulkanApp()
@@ -1219,12 +1312,17 @@ void VulkanApp::start()
   createLogicalDevice();
   createSwapChain();
   createRenderPass();
+  createDescriptorSetLayout();
   createGraphicsPipeline();
   createFramebuffer();
   createCommandPool();
 
   createVertexBuffers();
   createIndexBuffers();
+
+  createUniformBuffers();
+  createDescriptorPool();
+  createDescriptorSets();
 }
 
 void VulkanApp::loop()
@@ -1242,11 +1340,6 @@ void VulkanApp::end()
 {
   user_app_->clear();
 
-  /*for (size_t i = 0; i < k_max_frames; i++) {
-    vkDestroyFence(context_->logDevice_, context_->inFlightFences[i], nullptr);
-    vkDestroyCommandPool(context_->logDevice_, context_->perFrame[i].primaryCommandPool, nullptr);
-  }*/
-
   vkQueueWaitIdle(context_->graphicsQueue);
   for (auto& framebuffer : context_->swapchainFramebuffers) {
     vkDestroyFramebuffer(context_->logDevice_, framebuffer, nullptr);
@@ -1257,16 +1350,26 @@ void VulkanApp::end()
     destroyFrameData(frame_data);
   }
   context_->perFrame.clear();
+  ResourceManager* rm = ResourceManager::Get();
+  Resources* intResources = rm->getResources();
 
   vkDestroyPipeline(context_->logDevice_, context_->pipeline, nullptr);
   vkDestroyPipelineLayout(context_->logDevice_, context_->pipelineLayout, nullptr);
   vkDestroyRenderPass(context_->logDevice_, context_->renderPass, nullptr);
+  for (size_t i = 0; i < context_->swapchainImageViews.size(); i++) {
+    vkDestroyBuffer(context_->logDevice_, intResources->uniformBuffers[i], nullptr);
+    vkFreeMemory(context_->logDevice_, intResources->uniformBufferMemory[i], nullptr);
+  }
+
+  vkDestroyDescriptorPool(context_->logDevice_, context_->descriptorPool, nullptr);
+
   for (auto image_view : context_->swapchainImageViews) {
     vkDestroyImageView(context_->logDevice_, image_view, nullptr);
   }
   vkDestroySwapchainKHR(context_->logDevice_, context_->swapChain, nullptr);
 
-  Resources* intResources = ResourceManager::Get()->getResources();
+  vkDestroyDescriptorSetLayout(context_->logDevice_, context_->descriptorLayout, nullptr);
+
 
   vkDestroyBuffer(context_->logDevice_, intResources->bufferIndices, nullptr);
   vkFreeMemory(context_->logDevice_, intResources->indexBufferMemory, nullptr);
@@ -1281,7 +1384,8 @@ void VulkanApp::end()
     DestroyDebugUtilsMessengerEXT(context_->instance_, debug_data_->debugMessenger_, nullptr);
   }
   vkDestroyInstance(context_->instance_, nullptr);
-  
+  delete(rm);
+
   glfwDestroyWindow(context_->window_);
   glfwTerminate();
 }

@@ -2,12 +2,19 @@
 #include "vertex_buffer.h"
 #include "internal.h"
 #include <iterator>
+#include "entity.h"
 
 ResourceManager* ResourceManager::instance_ = nullptr;
+std::vector<Entity> Scene::sceneEntities;
 
 
 ResourceManager::~ResourceManager()
 {
+  for (auto& entity : Scene::sceneEntities) {
+    for (auto component : entity.components_) {
+      delete(component.second);
+    }
+  }
   delete(resources_);
 }
 
@@ -45,6 +52,14 @@ void ResourceManager::createVertexBuffer(VertexBuffer* buffer)
   resources_->vertex_data.push_back(newVertexData);
 }
 
+
+void ResourceManager::createEntity(Entity* new_entity)
+{
+  if (new_entity == nullptr) return;
+
+  new_entity->id_ = Scene::sceneEntities.size();
+  Scene::sceneEntities.push_back(*new_entity);
+}
 
 ResourceManager::ResourceManager()
 {

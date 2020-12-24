@@ -2,6 +2,7 @@
 #define __RESOURCE_MANAGER__ 1
 
 class VertexBuffer;
+class Entity;
 struct Resources;
 class ResourceManager {
 public:
@@ -11,6 +12,7 @@ public:
   Resources* getResources() const;
 
   void createVertexBuffer(VertexBuffer*);
+  void createEntity(Entity*);
 
 private:
   Resources* resources_;

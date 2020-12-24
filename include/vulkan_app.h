@@ -59,6 +59,16 @@ private:
   void createVertexBuffers();
   void createIndexBuffers();
 
+  void createDescriptorSetLayout();
+  void createDescriptorPool();
+  void createDescriptorSets();
+
+  void createUniformBuffers();
+
+  void updateUniformBuffers(uint32 index);
+
+
+
   //Command Buffers
   //void createCommandBuffers();
  

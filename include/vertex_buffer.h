@@ -12,9 +12,10 @@ class VertexBuffer {
 public:
   VertexBuffer();
   ~VertexBuffer();
-  void loadPoints(glm::vec3* points, uint32 vertex_numb);
+  void loadVertices(glm::vec3* points, uint32 vertex_numb);
   void loadIndices(uint32* index, uint32 indices_number);
   const int32 getId();
+  void copyBuffer(const VertexBuffer&);
   const glm::vec3* getVertexArray();
   uint32 getVertexNumber();
 

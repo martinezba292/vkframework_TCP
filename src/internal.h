@@ -7,6 +7,13 @@
 #include "glm/glm.hpp"
 #include <stdexcept>
 #include <assert.h>
+#include "entity.h"
+
+
+#define MAX_ENTITY 50
+struct Scene {
+  static std::vector<Entity> sceneEntities;
+};
 
 
 struct InternalVertexData {
@@ -40,6 +47,16 @@ struct Resources {
   VkDeviceMemory vertexBufferMemory;
   VkBuffer bufferIndices;
   VkDeviceMemory indexBufferMemory;
+  std::vector<VkBuffer> uniformBuffers;
+  std::vector<VkDeviceMemory> uniformBufferMemory;
+};
+
+
+
+struct UniformBufferObject {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
 };
 
 /********************************************************************************/
@@ -75,48 +92,16 @@ struct Context {
   VkRenderPass renderPass;
   VkPipeline pipeline;
   VkPipelineLayout pipelineLayout;
+  VkDescriptorSetLayout descriptorLayout;
+  VkDescriptorPool descriptorPool;
+  std::vector<VkDescriptorSet> descriptorSets;
   std::vector<VkSemaphore> recycledSemaphores;
   std::vector<FrameData> perFrame;
   VkCommandPool transferCommandPool;
 };
 
 
-
-
 /***************************************************/
-
-//struct SetupData {
-//  GLFWwindow* window_;
-//  VkInstance instance_;
-//  VkPhysicalDevice physDevice_;
-//  VkDevice logDevice_;
-//  VkQueue graphicsQueue;
-//  VkQueue presentQueue;
-//
-//  std::vector<VkSemaphore> imageAvaliable;
-//  std::vector<VkSemaphore> renderingFinished;
-//  std::vector<VkFence> inFlightFences;
-//  int32 frameCount;
-//};
-//
-//struct FrameBufferData {
-//  VkSwapchainKHR swapChain;
-//  std::vector<VkImage> swapChainImages_;
-//  std::vector<VkImageView> swapChainImageViews_;
-//  std::vector<VkFramebuffer> swapChainFramebuffer;
-//  VkFormat swapChainImageFormat;
-//  VkExtent2D swapChainExtent;
-//  VkRenderPass renderPass;
-//};
-
-//static VkSurfaceKHR windowSurface_;
-//
-//static VkPipelineLayout pipelineLayout;
-//static VkPipeline graphicsPipeline;
-//
-//static VkCommandPool commandPool;
-//static VkCommandPool commandTransferPool;
-//static std::vector<VkCommandBuffer> commandBuffers;
 
 
 //Validation Layers
@@ -210,8 +195,9 @@ static void createInternalBuffer(Context context, VkDeviceSize size, VkBufferUsa
   VkMemoryAllocateInfo allocInfo{};
   allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   allocInfo.allocationSize = memRequirements.size;
-  allocInfo.memoryTypeIndex = findMemoryType(context.physDevice_, memRequirements.memoryTypeBits,
-    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+  allocInfo.memoryTypeIndex = findMemoryType(context.physDevice_, 
+                                             memRequirements.memoryTypeBits, 
+                                             properties);
 
   //assert(vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory) == VK_SUCCESS);
   vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory);

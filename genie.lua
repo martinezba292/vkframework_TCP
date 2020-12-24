@@ -20,9 +20,8 @@ solution "VulkanTest"
 		
 -- End Solution Config --
 
+
 -- Project Config --
-
-
 project "VulkanTestProject"
   location "build/projects"
   kind "ConsoleApp"
@@ -34,7 +33,6 @@ project "VulkanTestProject"
 		"./deps/sokol/",
 		"./deps/stb/",
     "./deps/vulkan/Include",
-
 	}
 
 	configuration "vs*"
@@ -54,9 +52,11 @@ project "VulkanTestProject"
 		files {
 			-- Project files --
 
-			"include/**.h",
-			"src/**.cpp",
-			"src/**.h",
+			"./include/**.h",
+			"./include/Components/**.h",
+			"./src/Components/**.cpp",
+			"./src/**.cpp",
+			"./src/**.h",
 
 
 			-- GLFW files --
