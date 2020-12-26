@@ -9,9 +9,12 @@
 #include "vertex_buffer.h"
 #include "user_main.h"
 #include "Components/geometry.h"
+#include "Components/transform.h"
 #include "glm/gtc/matrix_transform.hpp"
 #define GLM_FORCE_RADIANS
 #include <chrono>
+#include <malloc.h>
+#include <time.h>
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -888,7 +891,7 @@ void VulkanApp::createDescriptorSetLayout()
 {
   VkDescriptorSetLayoutBinding uboLayoutBinding{};
   uboLayoutBinding.binding = 0;
-  uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
   uboLayoutBinding.descriptorCount = 1;
 
   uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -908,7 +911,7 @@ void VulkanApp::createDescriptorSetLayout()
 void VulkanApp::createDescriptorPool()
 {
   VkDescriptorPoolSize poolSize{};
-  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
   poolSize.descriptorCount = static_cast<uint32>(context_->swapchainImageViews.size());
 
   VkDescriptorPoolCreateInfo poolInfo{};
@@ -954,7 +957,7 @@ void VulkanApp::createDescriptorSets()
     descriptorWrite.dstBinding = 0;
     descriptorWrite.dstArrayElement = 0;
 
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     descriptorWrite.descriptorCount = 1;
 
     descriptorWrite.pBufferInfo = &bufferInfo;
@@ -967,17 +970,19 @@ void VulkanApp::createDescriptorSets()
 
 void VulkanApp::createUniformBuffers()
 {
-  VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+  uint64_t dynamicAlignment = padUniformBufferOffset(context_, sizeof(UniformBufferObject));
+  VkDeviceSize bufferSize = dynamicAlignment * Scene::sceneEntities.size();
 
   Resources* resources = ResourceManager::Get()->getResources();
 
   uint32 swapChainImageCount = context_->swapchainImageViews.size();
   resources->uniformBuffers.resize(swapChainImageCount);
   resources->uniformBufferMemory.resize(swapChainImageCount);
-
+  resources->dynamicUniformData = (UniformBufferObject*)_aligned_malloc(bufferSize, dynamicAlignment);
+  //resources->mapped = (UniformBufferObject*)_aligned_malloc(bufferSize, dynamicAlignment);
   for (size_t i = 0; i < swapChainImageCount; i++) {
     createInternalBuffer(*context_, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
                          resources->uniformBuffers[i], resources->uniformBufferMemory[i]);
   }
 }
@@ -990,25 +995,38 @@ void VulkanApp::updateUniformBuffers(uint32 index)
   float time = std::chrono::duration<float, std::chrono::seconds::period>
                                         (currentTime - startTime).count();
 
-  UniformBufferObject ubo{};
-  ubo.model = glm::rotate(glm::mat4(1.0f), 
-                          time * glm::radians(90.0f), 
-                          glm::vec3(0.0f, 0.0f, 1.0f));
-
-  ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), 
-                         glm::vec3(0.0f, 0.0f, 0.0f), 
-                         glm::vec3(0.0f, 0.0f, 1.0f));
-
-  float aspectRatio = context_->swapchainDimensions.width / (float)context_->swapchainDimensions.height;
-  ubo.proj = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 10.0f);
-
-  ubo.proj[1][1] *= -1;
-
   Resources* resources = ResourceManager::Get()->getResources();
+
+  //std::vector<UniformBufferObject> sceneUbo;
+  for (size_t i = 0; i < Scene::sceneEntities.size(); i++) {
+    UniformBufferObject ubo{};
+    ubo.model = glm::mat4();
+    Transform* tr = Scene::sceneEntities[i].getComponent<Transform>(kComponentType_Transform);
+    if (tr) {
+      //ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, -1.0f));//tr->getModel();
+      ubo.model = tr->getModel();
+    }
+
+    ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 1.0f),
+      glm::vec3(0.0f, 0.0f, 0.0f),
+      glm::vec3(0.0f, 1.0f, 0.0f));
+
+    float aspectRatio = context_->swapchainDimensions.width / (float)context_->swapchainDimensions.height;
+    ubo.proj = glm::perspective(/*glm::radians(45.0f)*/90.0f, aspectRatio, 0.1f, 10.0f);
+
+    ubo.proj[1][1] *= -1;
+    UniformBufferObject* buffer = (UniformBufferObject*)((uint64_t)resources->dynamicUniformData + (i * padUniformBufferOffset(context_, sizeof(UniformBufferObject))));
+    *buffer = ubo;
+  }
+  uint64_t sceneUboSize = Scene::sceneEntities.size() * padUniformBufferOffset(context_, sizeof(UniformBufferObject));
   void* data;
-  vkMapMemory(context_->logDevice_, resources->uniformBufferMemory[index], 0, sizeof(ubo), 0, &data);
-  memcpy(data, &ubo, sizeof(ubo));
+  vkMapMemory(context_->logDevice_, resources->uniformBufferMemory[index], 0, sceneUboSize, 0, &data);
+  memcpy(data, resources->dynamicUniformData, sceneUboSize);
   vkUnmapMemory(context_->logDevice_, resources->uniformBufferMemory[index]);
+  //VkMappedMemoryRange memoryRange{ VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  //memoryRange.memory = resources->uniformBufferMemory[index];
+  //memoryRange.size = sceneUboSize;
+  //vkFlushMappedMemoryRanges(context_->logDevice_, 1, &memoryRange);
 }
 
 //void VulkanApp::createCommandBuffers()
@@ -1212,10 +1230,11 @@ void VulkanApp::render(uint32 index)
   vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context_->pipeline);
   vkCmdBindVertexBuffers(cmd_buffer, 0, 1, vertexBuffers, offsets);
   vkCmdBindIndexBuffer(cmd_buffer, intResources->bufferIndices, 0, VK_INDEX_TYPE_UINT32);
-  vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-                          context_->pipelineLayout,0, 1, 
-                          &context_->descriptorSets[index], 0, nullptr);
   for (auto& entity : Scene::sceneEntities) {
+    uint32 uniform_offset = entity.getId() * padUniformBufferOffset(context_, sizeof(UniformBufferObject));
+    vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                            context_->pipelineLayout,0, 1, 
+                            &context_->descriptorSets[index], 1, &uniform_offset);
 
     Geometry* geo = entity.getComponent<Geometry>(kComponentType_Geometry);
     if (geo) {
@@ -1326,11 +1345,17 @@ void VulkanApp::start()
 }
 
 void VulkanApp::loop()
-{
+{ 
+  Scene::lastTime = std::chrono::high_resolution_clock::now();
   while (!glfwWindowShouldClose(context_->window_)) {
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>
+                                              (currentTime - Scene::lastTime).count();
     glfwPollEvents();
-    user_app_->run();
+    user_app_->run(deltaTime);
     drawFrame();
+
+    Scene::lastTime = currentTime;
   }
 
   vkDeviceWaitIdle(context_->logDevice_);

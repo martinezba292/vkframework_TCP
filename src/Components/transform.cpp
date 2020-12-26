@@ -97,5 +97,5 @@ glm::mat4 Transform::getModel()
   };
 
 
-  return scale * (zRotation * yRotation * xRotation) * translation;
+  return translation * (zRotation * yRotation * xRotation) * scale;
 }

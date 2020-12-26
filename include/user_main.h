@@ -6,7 +6,7 @@ public:
   UserMain() {};
   ~UserMain(){};
   void init();
-  void run();
+  void run(float delta_time);
   void clear();
 };
 

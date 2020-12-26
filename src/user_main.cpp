@@ -5,21 +5,24 @@
 #include "Components/transform.h"
 #include "Components/geometry.h"
 
+Entity quadEntity;
+float accumTime;
+
 void UserMain::init()
 {
+  accumTime = 0.0f;
   ResourceManager* rm = ResourceManager::Get();
-
-  Entity quadEntity;
   Transform* myTr = new Transform();
-  myTr->setPosition(3.0f, 2.0f, 0.0f);
+  myTr->setPosition(1.0f, 1.0f, -1.0f);
+  myTr->setScale(1.0f, 4.0f, 1.0f);
   quadEntity.addComponent(myTr);
 
   Transform* tr = quadEntity.getComponent<Transform>(kComponentType_Transform);
 
-  glm::vec3 quad[] = { {-0.2f, -0.3f, 0.0f},
-                       {-0.1f, -0.3f, 0.0f},
-                       {-0.1f, 0.3f, 0.0f},
-                       {-0.2f, 0.3f, 0.0f}
+  glm::vec3 quad[] = { {-0.1f, -0.1f, 0.0f},
+                       { 0.1f, -0.1f, 0.0f},
+                       { 0.1f,  0.1f, 0.0f},
+                       {-0.1f,  0.1f, 0.0f}
   };
 
   uint32 quad_indices[] = { 0, 1, 2, 2, 3, 0 };
@@ -34,6 +37,7 @@ void UserMain::init()
 
 
   Transform* triangleTr = new Transform();
+  triangleTr->setPosition(0.0f, 0.0f, 0.0f);
   Entity triangleEntity;
   triangleEntity.addComponent(triangleTr);
 
@@ -56,9 +60,13 @@ void UserMain::init()
   ResourceManager::Get()->createVertexBuffer(&bufferTest);*/
 }
 
-void UserMain::run()
+void UserMain::run(float delta_time)
 {
+  Transform* quadTr = quadEntity.getComponent<Transform>(kComponentType_Transform);
 
+  quadTr->rotateY(accumTime);
+  quadTr->rotateZ(accumTime);
+  accumTime += delta_time;
 }
 
 void UserMain::clear()

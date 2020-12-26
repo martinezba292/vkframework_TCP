@@ -6,7 +6,7 @@
 
 ResourceManager* ResourceManager::instance_ = nullptr;
 std::vector<Entity> Scene::sceneEntities;
-
+std::chrono::steady_clock::time_point Scene::lastTime;
 
 ResourceManager::~ResourceManager()
 {

@@ -8,11 +8,13 @@
 #include <stdexcept>
 #include <assert.h>
 #include "entity.h"
+#include <chrono>
 
 
 #define MAX_ENTITY 50
 struct Scene {
   static std::vector<Entity> sceneEntities;
+  static std::chrono::steady_clock::time_point lastTime;
 };
 
 
@@ -41,6 +43,12 @@ struct InternalVertexData {
   }
 };
 
+struct UniformBufferObject {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
+};
+
 struct Resources {
   std::vector<InternalVertexData> vertex_data;
   VkBuffer bufferObject;
@@ -49,15 +57,12 @@ struct Resources {
   VkDeviceMemory indexBufferMemory;
   std::vector<VkBuffer> uniformBuffers;
   std::vector<VkDeviceMemory> uniformBufferMemory;
+  UniformBufferObject* dynamicUniformData;
+  void* mapped;
 };
 
 
 
-struct UniformBufferObject {
-  glm::mat4 model;
-  glm::mat4 view;
-  glm::mat4 proj;
-};
 
 /********************************************************************************/
 
@@ -239,6 +244,20 @@ static void copyBuffer(Context context, VkBuffer srcBuffer, VkBuffer dstBuffer, 
 
   vkFreeCommandBuffers(context.logDevice_, context.transferCommandPool, 1, &commandBuffer);
 
+}
+
+
+static uint64_t padUniformBufferOffset(Context* context, size_t size) {
+  VkPhysicalDeviceProperties deviceProperties;
+  vkGetPhysicalDeviceProperties(context->physDevice_, &deviceProperties);
+  uint64_t minUboAlignment = deviceProperties.limits.minUniformBufferOffsetAlignment;
+
+  uint64_t offset = size;
+  if (minUboAlignment > 0) {
+    offset = (size + minUboAlignment - 1) & ~(minUboAlignment - 1);
+  }
+
+  return offset;
 }
 
 #endif // !1

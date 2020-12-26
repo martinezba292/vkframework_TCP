@@ -26,8 +26,6 @@
 *.lib
 *.a
 
-*.bat
-
 # Binaries directories
 bin/
 build/
