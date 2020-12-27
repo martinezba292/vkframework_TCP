@@ -4,25 +4,35 @@
 #include "common_def.h"
 #include "glm/glm.hpp"
 
-//struct Vertex {
-//  glm::vec3 point_;
-//};
+
+struct Vertex {
+  glm::vec3 vertex;
+  glm::vec3 normal;
+  glm::vec2 uv;
+};
 
 class VertexBuffer {
 public:
   VertexBuffer();
   ~VertexBuffer();
-  void loadVertices(glm::vec3* points, uint32 vertex_numb);
+  void loadVertices(Vertex* points, uint32 vertex_numb);
   void loadIndices(uint32* index, uint32 indices_number);
   const int32 getId();
   void copyBuffer(const VertexBuffer&);
-  const glm::vec3* getVertexArray();
+  const Vertex* getVertexArray();
   uint32 getVertexNumber();
 
+  static Vertex VertexInitializer(glm::vec3 vertex) {
+    return { vertex, glm::vec3(0.0f), glm::vec2(0.0f) };
+  }
+
+  static Vertex VertexInitializer(glm::vec3 vertex, glm::vec3 normal) {
+    return { vertex, normal, glm::vec2(0.0f) };
+  }
 
 private:
   int32 buffer_id_;
-  std::vector<glm::vec3> vertex_array_;
+  std::vector<Vertex> vertex_array_;
   std::vector<uint32> indices_array_;
 
   friend class ResourceManager;

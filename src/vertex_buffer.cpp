@@ -11,7 +11,7 @@ VertexBuffer::~VertexBuffer()
   vertex_array_.clear();
 }
 
-void VertexBuffer::loadVertices(glm::vec3* points, uint32 vertex_numb)
+void VertexBuffer::loadVertices(Vertex* points, uint32 vertex_numb)
 {
   vertex_array_.clear();
   vertex_array_.resize(vertex_numb);
@@ -37,7 +37,7 @@ void VertexBuffer::copyBuffer(const VertexBuffer& other)
   indices_array_ = other.indices_array_;
 }
 
-const glm::vec3* VertexBuffer::getVertexArray()
+const Vertex* VertexBuffer::getVertexArray()
 {
   return vertex_array_.data();
 }

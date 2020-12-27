@@ -5,7 +5,8 @@
 #include "Components/transform.h"
 #include "Components/geometry.h"
 
-Entity quadEntity;
+Entity cubeEntity;
+Entity triangleEntity;
 float accumTime;
 
 void UserMain::init()
@@ -14,36 +15,72 @@ void UserMain::init()
   ResourceManager* rm = ResourceManager::Get();
   Transform* myTr = new Transform();
   myTr->setPosition(1.0f, 1.0f, -1.0f);
-  myTr->setScale(1.0f, 4.0f, 1.0f);
-  quadEntity.addComponent(myTr);
+  //myTr->setScale(2.0f, 1.0f, 1.0f);
+  cubeEntity.addComponent(myTr);
 
-  Transform* tr = quadEntity.getComponent<Transform>(kComponentType_Transform);
+  Transform* tr = cubeEntity.getComponent<Transform>(kComponentType_Transform);
 
-  glm::vec3 quad[] = { {-0.1f, -0.1f, 0.0f},
-                       { 0.1f, -0.1f, 0.0f},
-                       { 0.1f,  0.1f, 0.0f},
-                       {-0.1f,  0.1f, 0.0f}
+  Vertex cube[] = { 
+    ///FRONT
+    VertexBuffer::VertexInitializer({-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
+    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
+    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
+    VertexBuffer::VertexInitializer({-0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
+    
+    ///REAR
+    VertexBuffer::VertexInitializer({-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
+    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
+    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
+    VertexBuffer::VertexInitializer({-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
+    
+    ///RIGHT
+    VertexBuffer::VertexInitializer({ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}),
+    
+    ///LEFT
+    VertexBuffer::VertexInitializer({ -0.5f, -0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ -0.5f,  0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ -0.5f,  0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ -0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}),
+    
+    ///DOWN
+    VertexBuffer::VertexInitializer({ -0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ -0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({  0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({  0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}),
+    
+    ///UP
+    VertexBuffer::VertexInitializer({ -0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({ -0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({  0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}),
+    VertexBuffer::VertexInitializer({  0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f})
   };
 
-  uint32 quad_indices[] = { 0, 1, 2, 2, 3, 0 };
+  uint32 cube_indices[] = { 0,  1,  2,  2,  3,  0, 
+                            4,  6,  5,  4,  7,  6,
+                            8,  9,  10, 8,  11, 9, 
+                            12, 13, 14, 12, 14, 15,
+                            16, 19, 17, 19, 18, 17,
+                            23, 20, 21, 21, 22, 23 };
 
   Geometry* quad_geometry = new Geometry();
-  quad_geometry->loadGeometry(quad, 4, quad_indices, 6);
+  quad_geometry->loadGeometry(cube, 24, cube_indices, 36);
   quad_geometry->create();
 
-  quadEntity.addComponent(quad_geometry);
+  cubeEntity.addComponent(quad_geometry);
 
-  rm->createEntity(&quadEntity);
+  rm->createEntity(&cubeEntity);
 
 
   Transform* triangleTr = new Transform();
-  triangleTr->setPosition(0.0f, 0.0f, 0.0f);
-  Entity triangleEntity;
+  triangleTr->setPosition(-1.0f, 0.0f, 0.0f);
   triangleEntity.addComponent(triangleTr);
 
-  glm::vec3 triangle[] = { {0.0f, -0.3f, 0.0f},
-                           {0.4f, 0.0f, 0.0f},
-                           {0.0f, 0.3f, 0.0f}
+  Vertex triangle[] = { VertexBuffer::VertexInitializer({-0.5f,0.5f, 0.0f}),
+                        VertexBuffer::VertexInitializer({0.0f, -0.5f, 0.0f}),
+                        VertexBuffer::VertexInitializer({0.5f, 0.5f, 0.0f})
   };
 
   uint32 triangle_indices[] = { 0, 1, 2 };
@@ -54,18 +91,16 @@ void UserMain::init()
   triangleEntity.addComponent(triangle_geometry);
 
   rm->createEntity(&triangleEntity);
-
-  /*bufferTest.loadVertices(triangle, 3);
-  bufferTest.loadIndices(triangle_indices, 3);
-  ResourceManager::Get()->createVertexBuffer(&bufferTest);*/
 }
 
 void UserMain::run(float delta_time)
 {
-  Transform* quadTr = quadEntity.getComponent<Transform>(kComponentType_Transform);
+  Transform* quadTr = cubeEntity.getComponent<Transform>(kComponentType_Transform);
+  Transform* triangleTr = triangleEntity.getComponent<Transform>(kComponentType_Transform);
 
   quadTr->rotateY(accumTime);
-  quadTr->rotateZ(accumTime);
+  quadTr->rotateX(accumTime);
+  triangleTr->rotateZ(accumTime);
   accumTime += delta_time;
 }
 

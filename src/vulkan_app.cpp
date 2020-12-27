@@ -209,7 +209,7 @@ std::vector<const char*> VulkanApp::getRequiredExtension()
 {
   uint32 glfwExtensionCount = 0;
   const char** glfwExtension;
-  glfwExtension = /*(int8**)*/glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+  glfwExtension = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
   std::vector<const char*> extensions(glfwExtension, glfwExtension + glfwExtensionCount);
 
@@ -307,44 +307,6 @@ static int32 rateDeviceSuitability(VkPhysicalDevice device, Context context) {
   return score;
 }
 
-//static SwapChainSupportDetails querySwapChainSupport(Context context) {
-//  SwapChainSupportDetails details;
-//  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context.physDevice_, context.surface, &details.capabilities);
-//
-//  uint32 format_count = 0;
-//  vkGetPhysicalDeviceSurfaceFormatsKHR(context.physDevice_, context.surface, 
-//                                       &format_count, nullptr);
-//  if (format_count) {
-//    details.formats.resize(format_count);
-//    vkGetPhysicalDeviceSurfaceFormatsKHR(context.physDevice_, context.surface, 
-//                                         &format_count, details.formats.data());
-//  }
-//
-//  uint32 present_mode_count = 0;
-//  vkGetPhysicalDeviceSurfacePresentModesKHR(context.physDevice_, context.surface, 
-//                                            &present_mode_count, nullptr);
-//
-//  if (present_mode_count) {
-//    details.presentModes.resize(present_mode_count);
-//      vkGetPhysicalDeviceSurfacePresentModesKHR(context.physDevice_, context.surface, 
-//                                                &present_mode_count, details.presentModes.data());
-//  }
-//
-//  return details;
-//}
-
-//static bool isDeviceSuitable(Context& context) {
-//  QueueFamilyIndices indices = findQueueFamilies(context);
-//  bool extensionSupported = checkDeviceExtensionSupport(context.physDevice_);
-//  bool swapChainAdequate = false;
-//  if (extensionSupported) { //|| !deviceFeatures.geometryShader) {
-//    SwapChainSupportDetails swapchain_support = querySwapChain(context);
-//    swapChainAdequate = !swapchain_support.formats.empty() && 
-//                        !swapchain_support.presentModes.empty();
-//  }
-//
-//  return indices.isComplete() && extensionSupported && swapChainAdequate;
-//}
 
 void VulkanApp::setupPhysicalDevice()
 {
@@ -596,8 +558,9 @@ void VulkanApp::createGraphicsPipeline()
   vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertexInputInfo.vertexBindingDescriptionCount = descriptorsNumber;
   vertexInputInfo.pVertexBindingDescriptions = &InternalVertexData::getBindingDescription();
-  vertexInputInfo.vertexAttributeDescriptionCount = descriptorsNumber;
-  vertexInputInfo.pVertexAttributeDescriptions = &InternalVertexData::getAttributeDescription();
+  std::vector<VkVertexInputAttributeDescription> attributeDescription = InternalVertexData::getAttributeDescription();
+  vertexInputInfo.vertexAttributeDescriptionCount = attributeDescription.size();
+  vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data();
 
   /*Input assembly*/
   VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -819,7 +782,7 @@ void VulkanApp::createVertexBuffers()
     mainResources->vertex_data[i].offset = vertex_offset;
     vertex_offset += mainResources->vertex_data[i].vertex.size();
 
-    sizes[i] = (static_cast<uint64_t>(sizeof(glm::vec3)) * 
+    sizes[i] = (static_cast<uint64_t>(sizeof(Vertex)) * 
                         mainResources->vertex_data[i].vertex.size());
     offset_bytes[i] = total_vertex_bytes;
     total_vertex_bytes += sizes[i];
@@ -979,7 +942,6 @@ void VulkanApp::createUniformBuffers()
   resources->uniformBuffers.resize(swapChainImageCount);
   resources->uniformBufferMemory.resize(swapChainImageCount);
   resources->dynamicUniformData = (UniformBufferObject*)_aligned_malloc(bufferSize, dynamicAlignment);
-  //resources->mapped = (UniformBufferObject*)_aligned_malloc(bufferSize, dynamicAlignment);
   for (size_t i = 0; i < swapChainImageCount; i++) {
     createInternalBuffer(*context_, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
@@ -997,13 +959,11 @@ void VulkanApp::updateUniformBuffers(uint32 index)
 
   Resources* resources = ResourceManager::Get()->getResources();
 
-  //std::vector<UniformBufferObject> sceneUbo;
   for (size_t i = 0; i < Scene::sceneEntities.size(); i++) {
     UniformBufferObject ubo{};
     ubo.model = glm::mat4();
     Transform* tr = Scene::sceneEntities[i].getComponent<Transform>(kComponentType_Transform);
     if (tr) {
-      //ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, -1.0f));//tr->getModel();
       ubo.model = tr->getModel();
     }
 
@@ -1015,7 +975,8 @@ void VulkanApp::updateUniformBuffers(uint32 index)
     ubo.proj = glm::perspective(/*glm::radians(45.0f)*/90.0f, aspectRatio, 0.1f, 10.0f);
 
     ubo.proj[1][1] *= -1;
-    UniformBufferObject* buffer = (UniformBufferObject*)((uint64_t)resources->dynamicUniformData + (i * padUniformBufferOffset(context_, sizeof(UniformBufferObject))));
+    UniformBufferObject* buffer = (UniformBufferObject*)((uint64_t)resources->dynamicUniformData + 
+                                  (i * padUniformBufferOffset(context_, sizeof(UniformBufferObject))));
     *buffer = ubo;
   }
   uint64_t sceneUboSize = Scene::sceneEntities.size() * padUniformBufferOffset(context_, sizeof(UniformBufferObject));
@@ -1023,10 +984,6 @@ void VulkanApp::updateUniformBuffers(uint32 index)
   vkMapMemory(context_->logDevice_, resources->uniformBufferMemory[index], 0, sceneUboSize, 0, &data);
   memcpy(data, resources->dynamicUniformData, sceneUboSize);
   vkUnmapMemory(context_->logDevice_, resources->uniformBufferMemory[index]);
-  //VkMappedMemoryRange memoryRange{ VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-  //memoryRange.memory = resources->uniformBufferMemory[index];
-  //memoryRange.size = sceneUboSize;
-  //vkFlushMappedMemoryRanges(context_->logDevice_, 1, &memoryRange);
 }
 
 //void VulkanApp::createCommandBuffers()

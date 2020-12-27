@@ -17,27 +17,38 @@ struct Scene {
   static std::chrono::steady_clock::time_point lastTime;
 };
 
-
+struct Vertex;
 struct InternalVertexData {
-  std::vector<glm::vec3> vertex;
+  std::vector<Vertex> vertex;
   std::vector<uint32> indices;
   uint32 offset;
   uint32 index_offset;
+
   static VkVertexInputBindingDescription getBindingDescription() {
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(glm::vec3);
+    bindingDescription.stride = (2 * sizeof(glm::vec3)) + sizeof(glm::vec2);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     return bindingDescription;
   }
 
-  static VkVertexInputAttributeDescription getAttributeDescription() {
-    VkVertexInputAttributeDescription attributeDescription{};
-    attributeDescription.binding = 0;
-    attributeDescription.location = 0;
-    attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescription.offset = 0;
+  static std::vector<VkVertexInputAttributeDescription> getAttributeDescription() {
+    std::vector<VkVertexInputAttributeDescription> attributeDescription(3);
+    attributeDescription[0].binding = 0;
+    attributeDescription[0].location = 0;
+    attributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescription[0].offset = 0;
+
+    attributeDescription[1].binding = 0;
+    attributeDescription[1].location = 1;
+    attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescription[1].offset = sizeof(glm::vec3);
+
+    attributeDescription[2].binding = 0;
+    attributeDescription[2].location = 2;
+    attributeDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescription[2].offset = 2 * sizeof(glm::vec3);
 
     return attributeDescription;
   }
@@ -58,7 +69,6 @@ struct Resources {
   std::vector<VkBuffer> uniformBuffers;
   std::vector<VkDeviceMemory> uniformBufferMemory;
   UniformBufferObject* dynamicUniformData;
-  void* mapped;
 };
 
 

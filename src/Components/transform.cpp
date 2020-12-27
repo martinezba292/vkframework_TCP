@@ -60,9 +60,9 @@ glm::mat4 Transform::getModel()
 {
   glm::vec3 pos = transform_data_.position;
   glm::mat4 translation{
-    1.0f, 0.0f, 0.0f, 0.0f,
-    0.0f, 1.0f, 0.0f, 0.0f,
-    0.0f, 0.0f, 1.0f, 0.0f,
+    1.0f,  0.0f,  0.0f,  0.0f,
+    0.0f,  1.0f,  0.0f,  0.0f,
+    0.0f,  0.0f,  1.0f,  0.0f,
     pos.x, pos.y, pos.z, 1.0f
   };
 
@@ -76,24 +76,24 @@ glm::mat4 Transform::getModel()
 
   glm::vec3 rot = transform_data_.rotation;
   glm::mat4 zRotation{
-    cos(rot.z),  -sin(rot.z), 0.0f, 0.0f,
-    sin(rot.z), cos(rot.z), 0.0f, 0.0f,
+    cos(rot.z), -sin(rot.z), 0.0f, 0.0f,
+    sin(rot.z),  cos(rot.z), 0.0f, 0.0f,
     0.0f,        0.0f,       1.0f, 0.0f,
     0.0f,        0.0f,       0.0f, 1.0f
   };
 
   glm::mat4 yRotation{
-    cos(rot.y),  0.0f, sin(rot.y), 0.0f,
-    0.0f,        1.0f, 0.0f,       0.0f,
-    -sin(rot.y), 0.0f, cos(rot.y), 0.0f,
-    0.0f,        0.0f, 0.0f,       1.0f
+    cos(rot.y), 0.0f, sin(rot.y), 0.0f,
+    0.0f,       1.0f, 0.0f,       0.0f,
+   -sin(rot.y), 0.0f, cos(rot.y), 0.0f,
+    0.0f,       0.0f, 0.0f,       1.0f
   };
 
   glm::mat4 xRotation{
-    1.0f, 0.0f,       0.0f,        0.0f,
-    0.0f, cos(rot.x), -sin(rot.x), 0.0f,
-    0.0f, sin(rot.x), cos(rot.x),  0.0f,
-    0.0f, 0.0f,       0.0f,        1.0f
+    1.0f, 0.0f,        0.0f,        0.0f,
+    0.0f, cos(rot.x), -sin(rot.x),  0.0f,
+    0.0f, sin(rot.x),  cos(rot.x),  0.0f,
+    0.0f, 0.0f,        0.0f,        1.0f
   };
 
 

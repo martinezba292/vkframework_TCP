@@ -3,6 +3,10 @@
 #include "internal.h"
 #include <iterator>
 #include "entity.h"
+#include "Components/geometry.h"
+
+Geometry PrimitiveGeometry::triangle;
+Geometry PrimitiveGeometry::cube;
 
 ResourceManager* ResourceManager::instance_ = nullptr;
 std::vector<Entity> Scene::sceneEntities;
@@ -33,13 +37,25 @@ Resources* ResourceManager::getResources() const
   return resources_;
 }
 
+void ResourceManager::initPrimitiveGeometries()
+{
+  Vertex triangle[] = { VertexBuffer::VertexInitializer({-0.5f,0.5f, 0.0f}),
+                        VertexBuffer::VertexInitializer({0.0f, -0.5f, 0.0f}),
+                        VertexBuffer::VertexInitializer({0.5f, 0.5f, 0.0f})
+  };
+
+  uint32 triangle_indices[] = { 0, 1, 2 };
+
+  PrimitiveGeometry::triangle.loadGeometry(triangle, 3, triangle_indices, 3);
+}
+
 void ResourceManager::createVertexBuffer(VertexBuffer* buffer)
 {
   buffer->buffer_id_ = resources_->vertex_data.size();
   InternalVertexData newVertexData;
   newVertexData.vertex.resize(buffer->getVertexNumber());
 
-  const glm::vec3* vertices = buffer->getVertexArray();
+  const Vertex* vertices = buffer->getVertexArray();
   std::copy(vertices,
             vertices + buffer->getVertexNumber(),
             newVertexData.vertex.data());

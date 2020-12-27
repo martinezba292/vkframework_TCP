@@ -10,6 +10,7 @@ public:
   ~ResourceManager();
   static ResourceManager* Get();
   Resources* getResources() const;
+  void initPrimitiveGeometries();
 
   void createVertexBuffer(VertexBuffer*);
   void createEntity(Entity*);
