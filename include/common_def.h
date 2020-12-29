@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <vector>
+#include "vulkan/vulkan.h"
+#include "GLFW/glfw3.h"
 
 #define NDEBUG
 
@@ -12,6 +14,7 @@ typedef int32_t int32;
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
+typedef GLFWwindow Window;
 
 static const int32 k_wWidth = 800;
 static const int32 k_wHeight = 600;

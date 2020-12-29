@@ -22,7 +22,6 @@ public:
 private:
   //INSTANCE
   void createAppInstance();
-  std::vector<const char*> getRequiredExtension();
 
   //VALIDATION LAYERS
   bool checkValidationLayers();
@@ -67,18 +66,12 @@ private:
 
   void updateUniformBuffers(uint32 index);
 
-
-
-  //Command Buffers
-  //void createCommandBuffers();
  
   void initFrameData(uint32 frame_count);
   void destroyFrameData(FrameData& frame_data);
 
   int32 acquireNextImage(uint32* image);
-
   void render(uint32 index);
-
   int32 presentImage(uint32 index);
 
   //Draw Loop
