@@ -10,7 +10,6 @@ public:
   ~ResourceManager();
   static ResourceManager* Get();
   Resources* getResources() const;
-  //Camera getCamera();
   void initPrimitiveGeometries();
 
   void createVertexBuffer(VertexBuffer*);
@@ -18,7 +17,6 @@ public:
 
 private:
   Resources* resources_;
-  //Camera sceneCamera_;
   static ResourceManager* instance_;
 };
 

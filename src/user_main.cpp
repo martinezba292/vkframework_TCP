@@ -5,103 +5,72 @@
 #include "Components/transform.h"
 #include "Components/geometry.h"
 
-Entity cubeEntity;
-Entity triangleEntity;
+#define DIMENSIONS 10
+const uint32 k_entitiesNumber = DIMENSIONS * DIMENSIONS;
+
+
 float accumTime;
+Entity massiveTest[k_entitiesNumber];
+Entity textureTest;
 
 void UserMain::init()
 {
   accumTime = 0.0f;
   ResourceManager* rm = ResourceManager::Get();
-  Transform* myTr = new Transform();
-  myTr->setPosition(2.0f, 0.0f, -5.0f);
-  myTr->rotateX(-2.0f);
-  cubeEntity.addComponent(myTr);
 
-  Transform* tr = cubeEntity.getComponent<Transform>(kComponentType_Transform);
+  //uint32 offset = 3.0f;
+  //for (size_t i = 0; i < DIMENSIONS; i++) {
+  //  for (size_t j = 0; j < DIMENSIONS; j++) {
+  //    uint32 index = i * DIMENSIONS + j;
 
-  Vertex cube[] = { 
-    ///FRONT
-    VertexBuffer::VertexInitializer({-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
-    VertexBuffer::VertexInitializer({-0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
-    
-    ///REAR
-    VertexBuffer::VertexInitializer({-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
-    VertexBuffer::VertexInitializer({-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
-    
-    ///RIGHT
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}),
-    
-    ///LEFT
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}),
-    
-    ///DOWN
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}),
-    
-    ///UP
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f})
-  };
+  //    Transform* newTR = new Transform();
+  //    newTR->setPosition(j * offset, i * offset, -5.0f);
+  //    Geometry* newGeo = new Geometry();
+  //    newGeo->initWithPrimitive(kPrimitiveType_Sphere);
 
-  uint32 cube_indices[] = { 0,  2,  1,  2,  0,  3, 
-                            4,  5,  6,  4,  6,  7,
-                            8,  10,  9, 8,  9, 11, 
-                            12, 14, 13, 12, 15, 14,
-                            16, 17, 19, 19, 17, 18,
-                            23, 21, 20, 21, 23, 22 };
+  //    massiveTest[index].addComponent(newTR);
+  //    massiveTest[index].addComponent(newGeo);
 
+  //    rm->createEntity(&massiveTest[index]);
+  //  }
+  //}
+
+  //Vertex quad[] = {
+  //  {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+  //  {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+  //  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+  //  {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
+  //};
+
+  //uint32 quad_indices[] = {
+  //  0, 2, 1, 2, 0, 3
+  //};
+
+  Transform* quad_tr = new Transform();
+  quad_tr->setPosition(0.0f, 0.0f, -2.0f);
+  //float scale = 2.0f;
+  //quad_tr->setScale(scale, scale, 1.0f);
   Geometry* quad_geometry = new Geometry();
-  quad_geometry->loadGeometry(cube, 24, cube_indices, 36);
-  quad_geometry->create();
+  quad_geometry->initWithPrimitive(kPrimitiveType_Quad);
+  //quad_geometry->loadGeometry(quad, 4, quad_indices, 6);
+  //quad_geometry->create();
 
-  cubeEntity.addComponent(quad_geometry);
+  textureTest.addComponent(quad_tr);
+  textureTest.addComponent(quad_geometry);
 
-  rm->createEntity(&cubeEntity);
-
-
-  Transform* triangleTr = new Transform();
-  triangleTr->setPosition(-1.0f, 0.0f, -2.0f);
-  triangleEntity.addComponent(triangleTr);
-
-  Vertex triangle[] = { 
-    VertexBuffer::VertexInitializer({0.5f, 0.5f, -2.0f}),
-    VertexBuffer::VertexInitializer({0.0f, -0.5f,-2.0f}),
-    VertexBuffer::VertexInitializer({-0.5f,0.5f, -2.0f})
-  };
-
-  uint32 triangle_indices[] = { 0, 1, 2 };
-  Geometry* triangle_geometry = new Geometry();
-  triangle_geometry->loadGeometry(triangle, 3, triangle_indices, 3);
-  triangle_geometry->create();
-
-  triangleEntity.addComponent(triangle_geometry);
-
-  rm->createEntity(&triangleEntity);
+  rm->createEntity(&textureTest);
 }
 
 void UserMain::run(float delta_time)
 {
-  Transform* quadTr = cubeEntity.getComponent<Transform>(kComponentType_Transform);
-  Transform* triangleTr = triangleEntity.getComponent<Transform>(kComponentType_Transform);
+  //for (size_t i = 0; i < k_entitiesNumber; i++) {
+  //  Transform* tr = massiveTest[i].getComponent<Transform>(kComponentType_Transform);
+  //  tr->rotateX(accumTime);
+  //  tr->rotateZ(accumTime);
+  //}
 
-  quadTr->rotateY(accumTime);
-  quadTr->rotateX(accumTime);
-  triangleTr->rotateZ(accumTime);
+
+
   accumTime += delta_time;
 }
 

@@ -6,6 +6,12 @@ Geometry::Geometry()
   type_ = kComponentType_Geometry;
 }
 
+Geometry::Geometry(const Geometry& other)
+{
+  type_ = other.type_;
+  geometry_buffer_ = other.geometry_buffer_;
+}
+
 void Geometry::loadGeometry(Vertex* vertices, uint32 vertex_number, uint32* indices, uint32 index_number)
 {
   geometry_buffer_.loadVertices(vertices, vertex_number);
@@ -21,5 +27,10 @@ void Geometry::create()
 {
   ResourceManager::Get()->createVertexBuffer(&geometry_buffer_);
   id_ = geometry_buffer_.getId();
+}
+
+void Geometry::initWithPrimitive(PrimitiveType type)
+{
+  id_ = type;
 }
 

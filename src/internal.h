@@ -50,6 +50,36 @@ struct InternalVertexData {
   }
 };
 
+struct InternalTexture {
+  VkImage textureImage;
+  VkDeviceMemory textureImageMemory;
+  VkImageView textureImageView;
+  VkSampler textureSampler;
+};
+
+struct InternalMaterial {
+  VkPipeline matPipeline;
+  uint32 uniformSize;
+  VkVertexInputAttributeDescription attribDescription;
+  std::vector<VkVertexInputBindingDescription> bindDescription;
+  UniformBlocks uniformBlocks;
+};
+
+union UniformBlocks {
+  UnlitUniform unlitBlock;
+  TextureUniform textureBlock;
+  uint8 type;
+};
+
+struct UnlitUniform {
+  glm::vec4 color;
+};
+
+struct TextureUniform {
+  VkSampler samplerUniform;
+
+};
+
 struct UniformBufferObject {
   glm::mat4 model;
 };
@@ -66,10 +96,13 @@ struct Resources {
   VkBuffer bufferIndices;
   VkDeviceMemory indexBufferMemory;
   std::vector<VkBuffer> uniformBuffers;
-  std::vector<VkBuffer> sceneUniformBuffers;
-  std::vector<VkDeviceMemory> sceneUniformBufferMemory;
+  std::vector<void*> dynamicUniformMapped;
   std::vector<VkDeviceMemory> uniformBufferMemory;
+  std::vector<VkBuffer> sceneUniformBuffers;
+  std::vector<void*> staticUniformMapped;
+  std::vector<VkDeviceMemory> sceneUniformBufferMemory;
   UniformBufferObject* dynamicUniformData;
+  InternalTexture texture;
 };
 
 
@@ -91,6 +124,7 @@ struct FrameData {
   VkSemaphore swapchainAcquire;
   VkSemaphore swapchainRelease;
 };
+
 
 struct Context {
   Window* window_;

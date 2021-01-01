@@ -2,6 +2,7 @@
 #define __INPUT_MANAGER_H__ 1
 
 #include "common_def.h"
+#include "glm/glm.hpp"
 
 enum KeyCode {
   kKeyCode_W = 0,
@@ -25,7 +26,7 @@ public:
 
 private:
   static uint8 inputState[kKeyCode_MAX];
-  static float cursorPosition[2];
+  static glm::vec2 cursorPosition;
 };
 
 #endif // __INPUT_MANAGER_H__ 1

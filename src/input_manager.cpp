@@ -4,7 +4,7 @@
 
 
 uint8 InputManager::inputState[kKeyCode_MAX];
-float InputManager::cursorPosition[2];
+glm::vec2 InputManager::cursorPosition(0.0f);
 
 InputManager::InputManager()
 {
@@ -45,8 +45,8 @@ void InputManager::keyCallback(Window* window, int32 key, int32 scancode, int32 
 
 void InputManager::mouseCallback(Window* window, double xpos, double ypos)
 {
-  cursorPosition[0] = xpos;
-  cursorPosition[1] = ypos;
+  cursorPosition.x = xpos;
+  cursorPosition.y = ypos;
 }
 
 bool InputManager::getInputState(const KeyCode code)
@@ -56,6 +56,6 @@ bool InputManager::getInputState(const KeyCode code)
 
 float* InputManager::getCursorPosition()
 {
-  return cursorPosition;
+  return &cursorPosition.x;
 }
 

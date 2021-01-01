@@ -9,6 +9,7 @@
 #include "Components/transform.h"
 #include <malloc.h>
 #include "input_manager.h"
+#include "Components/texture.h"
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -205,15 +206,16 @@ static int32 rateDeviceSuitability(VkPhysicalDevice device, Context context) {
 
   QueueFamilyIndices indices = StaticHelpers::findQueueFamilies(device, context.surface);
   bool extensionSupported = checkDeviceExtensionSupport(device);
-  if (!indices.isComplete() || !extensionSupported) {
+  SwapChainSupportDetails swapChainSupport = StaticHelpers::querySwapChain(device, context.surface);
+  bool swapChainSupported = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+  if (!indices.isComplete() || !extensionSupported || 
+      !swapChainSupported || !deviceFeatures.samplerAnisotropy) {
     return 0;
   }
 
-  SwapChainSupportDetails swapChainSupport = StaticHelpers::querySwapChain(device, context.surface);
-  bool swapChainSupported = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-  if (!swapChainSupported) {
+  /*if (!swapChainSupported) {
     return 0;
-  }
+  }*/
 
   return score;
 }
@@ -371,7 +373,7 @@ void VulkanApp::createSwapChain()
   context_->swapchainDimensions.format = surfaceFormat.format;
   context_->swapchainDimensions.width = swapExtent.width;
   context_->swapchainDimensions.height = swapExtent.height;
-  Scene::camera.setAspect(context_->swapchainDimensions.width, context_->swapchainDimensions.height);
+  //Scene::camera.setAspect(context_->swapchainDimensions.width, context_->swapchainDimensions.height);
 
 
   /*Image Views*/
@@ -769,20 +771,24 @@ void VulkanApp::createIndexBuffers()
 
 void VulkanApp::createDescriptorSetLayout()
 {
-  std::vector<VkDescriptorSetLayoutBinding> uboLayoutBinding(2);
+  std::vector<VkDescriptorSetLayoutBinding> uboLayoutBinding(3);
   uboLayoutBinding[0].binding = 0;
   uboLayoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   uboLayoutBinding[0].descriptorCount = 1;
-
   uboLayoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
   uboLayoutBinding[0].pImmutableSamplers = nullptr;
 
   uboLayoutBinding[1].binding = 1;
   uboLayoutBinding[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
   uboLayoutBinding[1].descriptorCount = 1;
-
   uboLayoutBinding[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
   uboLayoutBinding[1].pImmutableSamplers = nullptr;
+
+  uboLayoutBinding[2].binding = 2;
+  uboLayoutBinding[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  uboLayoutBinding[2].descriptorCount = 1;
+  uboLayoutBinding[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  uboLayoutBinding[2].pImmutableSamplers = nullptr;
 
   VkDescriptorSetLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -801,7 +807,8 @@ void VulkanApp::createDescriptorPool()
 {
   std::vector<VkDescriptorPoolSize> poolSizes{
     {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , static_cast<uint32>(context_->swapchainImageViews.size())},
-    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , static_cast<uint32>(context_->swapchainImageViews.size())} 
+    {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , static_cast<uint32>(context_->swapchainImageViews.size())}, 
+    {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , static_cast<uint32>(context_->swapchainImageViews.size())} 
   };
 
   VkDescriptorPoolCreateInfo poolInfo{};
@@ -843,7 +850,7 @@ void VulkanApp::createDescriptorSets()
     bufferSceneInfo.offset = 0;
     bufferSceneInfo.range = sizeof(SceneUniformBuffer);
 
-    std::vector<VkWriteDescriptorSet> descriptorWrite(2);
+    std::vector<VkWriteDescriptorSet> descriptorWrite(3);
     descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite[0].dstSet = context_->descriptorSets[i];
     descriptorWrite[0].dstBinding = 0;
@@ -874,6 +881,20 @@ void VulkanApp::createDescriptorSets()
     descriptorWrite[1].pImageInfo = nullptr;
     descriptorWrite[1].pTexelBufferView = nullptr;
 
+
+    VkDescriptorImageInfo imageInfo{};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = resources->texture.textureImageView;
+    imageInfo.sampler = resources->texture.textureSampler;
+
+    descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite[2].dstSet = context_->descriptorSets[i];
+    descriptorWrite[2].dstBinding = 2;
+    descriptorWrite[2].dstArrayElement = 0;
+    descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrite[2].descriptorCount = 1;
+    descriptorWrite[2].pImageInfo = &imageInfo;
+
     vkUpdateDescriptorSets(context_->logDevice_, static_cast<uint32>(descriptorWrite.size()), descriptorWrite.data(), 0, nullptr);
   }
 }
@@ -890,17 +911,23 @@ void VulkanApp::createUniformBuffers()
   uint32 swapChainImageCount = context_->swapchainImageViews.size();
   resources->uniformBuffers.resize(swapChainImageCount);
   resources->uniformBufferMemory.resize(swapChainImageCount);
+  resources->dynamicUniformMapped.resize(swapChainImageCount);
   resources->sceneUniformBuffers.resize(swapChainImageCount);
+  resources->staticUniformMapped.resize(swapChainImageCount);
   resources->sceneUniformBufferMemory.resize(swapChainImageCount);
   resources->dynamicUniformData = (UniformBufferObject*)_aligned_malloc(dynamicBufferSize, dynamicAlignment);
   for (size_t i = 0; i < swapChainImageCount; i++) {
     StaticHelpers::createInternalBuffer(*context_, sizeof(SceneUniformBuffer), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      resources->sceneUniformBuffers[i], resources->sceneUniformBufferMemory[i]);
+                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                        resources->sceneUniformBuffers[i], resources->sceneUniformBufferMemory[i]);
+
+    vkMapMemory(context_->logDevice_, resources->sceneUniformBufferMemory[i], 0, sizeof(SceneUniformBuffer), 0, &resources->staticUniformMapped[i]);
 
     StaticHelpers::createInternalBuffer(*context_, dynamicBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                         resources->uniformBuffers[i], resources->uniformBufferMemory[i]);
+                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                                        resources->uniformBuffers[i], resources->uniformBufferMemory[i]);
+
+    vkMapMemory(context_->logDevice_, resources->uniformBufferMemory[i], 0, dynamicBufferSize, 0, &resources->dynamicUniformMapped[i]);
   }
 }
 
@@ -911,10 +938,11 @@ void VulkanApp::updateUniformBuffers(uint32 index)
   Resources* resources = ResourceManager::Get()->getResources();
 
   SceneUniformBuffer sceneBuffer{ Scene::camera.getView(), Scene::camera.getProjection() };
-  void* scene_data;
-  vkMapMemory(context_->logDevice_, resources->sceneUniformBufferMemory[index], 0, sizeof(SceneUniformBuffer), 0, &scene_data);
-  memcpy(scene_data, &sceneBuffer, sizeof(SceneUniformBuffer));
-  vkUnmapMemory(context_->logDevice_, resources->sceneUniformBufferMemory[index]);
+  memcpy(resources->staticUniformMapped[index], &sceneBuffer, sizeof(SceneUniformBuffer));
+  VkMappedMemoryRange memoryRange{ VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
+  memoryRange.memory = resources->sceneUniformBufferMemory[index];
+  memoryRange.size = sizeof(SceneUniformBuffer);
+  vkFlushMappedMemoryRanges(context_->logDevice_, 1, &memoryRange);
 
   for (size_t i = 0; i < Scene::sceneEntities.size(); i++) {
     UniformBufferObject ubo{};
@@ -930,10 +958,10 @@ void VulkanApp::updateUniformBuffers(uint32 index)
   }
 
   uint64_t sceneUboSize = Scene::sceneEntities.size() * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBufferObject));
-  void* data;
-  vkMapMemory(context_->logDevice_, resources->uniformBufferMemory[index], 0, sceneUboSize, 0, &data);
-  memcpy(data, resources->dynamicUniformData, sceneUboSize);
-  vkUnmapMemory(context_->logDevice_, resources->uniformBufferMemory[index]);
+  memcpy(resources->dynamicUniformMapped[index], resources->dynamicUniformData, sceneUboSize);
+  memoryRange.memory = resources->uniformBufferMemory[index];
+  memoryRange.size = sceneUboSize;
+  vkFlushMappedMemoryRanges(context_->logDevice_, 1, &memoryRange);
 }
 
 /*********************************************************************************************/
@@ -1099,7 +1127,7 @@ void VulkanApp::render(uint32 index)
                             &context_->descriptorSets[index], 1, &uniform_offset);
 
     Geometry* geo = entity.getComponent<Geometry>(kComponentType_Geometry);
-    if (geo) {
+    if (geo && geo->getId() >= 0) {
       InternalVertexData vertex_data = intResources->vertex_data[geo->getId()];
       uint32 first_vertex = vertex_data.offset;
       uint32 first_index = vertex_data.index_offset;
@@ -1197,6 +1225,7 @@ void VulkanApp::start()
   glfwSetInputMode(context_->window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetCursorPosCallback(context_->window_, InputManager::mouseCallback);
 
+  ResourceManager::Get()->initPrimitiveGeometries();
   user_app_->init();
 
   createAppInstance();
@@ -1210,6 +1239,12 @@ void VulkanApp::start()
   createGraphicsPipeline();
   createFramebuffer();
   createCommandPool();
+
+  Texture tex;
+  tex.loadTexture("./../../data/textures/guernica-picasso.jpg");
+  StaticHelpers::createTextureImage(context_, tex);
+  StaticHelpers::createTextureImageView(context_);
+  StaticHelpers::createTextureSampler(context_);
 
   createVertexBuffers();
   createIndexBuffers();
@@ -1256,12 +1291,14 @@ void VulkanApp::end()
     destroyFrameData(frame_data);
   }
   context_->perFrame.clear();
-  ResourceManager* rm = ResourceManager::Get();
-  Resources* intResources = rm->getResources();
 
   vkDestroyPipeline(context_->logDevice_, context_->pipeline, nullptr);
   vkDestroyPipelineLayout(context_->logDevice_, context_->pipelineLayout, nullptr);
   vkDestroyRenderPass(context_->logDevice_, context_->renderPass, nullptr);
+
+  ResourceManager* rm = ResourceManager::Get();
+  Resources* intResources = rm->getResources();
+  //Uniform Buffers
   for (size_t i = 0; i < context_->swapchainImageViews.size(); i++) {
     vkDestroyBuffer(context_->logDevice_, intResources->uniformBuffers[i], nullptr);
     vkDestroyBuffer(context_->logDevice_, intResources->sceneUniformBuffers[i], nullptr);
@@ -1271,17 +1308,24 @@ void VulkanApp::end()
 
   vkDestroyDescriptorPool(context_->logDevice_, context_->descriptorPool, nullptr);
 
+  //Swap chain
   for (auto image_view : context_->swapchainImageViews) {
     vkDestroyImageView(context_->logDevice_, image_view, nullptr);
   }
   vkDestroySwapchainKHR(context_->logDevice_, context_->swapChain, nullptr);
 
+  //Textures
+  vkDestroySampler(context_->logDevice_, intResources->texture.textureSampler, nullptr);
+  vkDestroyImageView(context_->logDevice_, intResources->texture.textureImageView, nullptr);
+  vkDestroyImage(context_->logDevice_, intResources->texture.textureImage, nullptr);
+  vkFreeMemory(context_->logDevice_, intResources->texture.textureImageMemory, nullptr);
+
+  //Descriptor Set
   vkDestroyDescriptorSetLayout(context_->logDevice_, context_->descriptorLayout, nullptr);
 
-
+  //Vertex Buffers
   vkDestroyBuffer(context_->logDevice_, intResources->bufferIndices, nullptr);
   vkFreeMemory(context_->logDevice_, intResources->indexBufferMemory, nullptr);
-
   vkDestroyBuffer(context_->logDevice_, intResources->bufferObject, nullptr);
   vkFreeMemory(context_->logDevice_, intResources->vertexBufferMemory, nullptr);
   

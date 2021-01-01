@@ -8,6 +8,7 @@
 struct QueueFamilyIndices;
 struct SwapChainSupportDetails;
 struct Context;
+class Texture;
 
 class StaticHelpers {
 public:
@@ -28,6 +29,25 @@ public:
   static VkShaderModule createShaderModule(const VkDevice device, const std::vector<char>& code);
 
   static SwapChainSupportDetails querySwapChain(VkPhysicalDevice device, VkSurfaceKHR surface);
+
+
+
+  static void createTextureImage(Context* context, Texture texture);
+
+  static void createTextureImageView(Context* context);
+
+  static void createTextureSampler(Context* context);
+
+  static void createImage(Context* context, uint32 width, uint32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                          VkMemoryPropertyFlags property, VkImage& image, VkDeviceMemory& image_memory);
+
+  static VkCommandBuffer beginSingleTimeCommands(Context* context);
+
+  static void endSingleTimeCommands(Context* context, VkCommandBuffer command_buffer);
+
+  static void transitionImageLayout(Context* context, VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout);
+
+  static void copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height);
 };
 
 

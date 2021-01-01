@@ -16,8 +16,8 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef GLFWwindow Window;
 
-static const int32 k_wWidth = 800;
-static const int32 k_wHeight = 600;
+static const int32 k_wWidth = 1024;
+static const int32 k_wHeight = 768;
 
 static const int32 k_max_frames = 2;
 
