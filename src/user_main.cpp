@@ -4,14 +4,16 @@
 #include "entity.h"
 #include "Components/transform.h"
 #include "Components/geometry.h"
+#include "material.h"
+#include "Components/texture.h"
 
 #define DIMENSIONS 10
 const uint32 k_entitiesNumber = DIMENSIONS * DIMENSIONS;
 
 
 float accumTime;
-Entity massiveTest[k_entitiesNumber];
-Entity textureTest;
+//Entity massiveTest[k_entitiesNumber];
+Entity colorTest;
 
 void UserMain::init()
 {
@@ -35,26 +37,45 @@ void UserMain::init()
   //  }
   //}
 
-  //Vertex quad[] = {
-  //  {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-  //  {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-  //  {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-  //  {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}
-  //};
+  Texture tex;
+  tex.loadTexture("./../../data/textures/rock_texture.jpg");
+  rm->createTexture(&tex);
 
-  //uint32 quad_indices[] = {
-  //  0, 2, 1, 2, 0, 3
-  //};
+  
+  Transform* colorTr = new Transform();
+  colorTr->setPosition(-3.0f, 2.0f, -2.0f);
+  Geometry* colorGeo = new Geometry();
+  colorGeo->initWithPrimitive(kPrimitiveType_Sphere);
+  Material color_mat;
+  color_mat.setMaterialType(kMaterialType_UnlitColor);
+  glm::vec3 color1 = { 1.0f, 0.2f, 0.0f };
+  color_mat.setMaterialColor(color1);
+  //color_mat.setMaterialTexture(tex);
+  rm->createMaterial(&color_mat);
+  colorTest.addComponent(colorTr);
+  colorTest.addComponent(colorGeo);
+  colorTest.setMaterial(&color_mat);
 
+  rm->createEntity(&colorTest);
+
+
+  Texture tex2;
+  tex2.loadTexture("./../../data/textures/wave.jpg");
+  rm->createTexture(&tex2);
+
+  Entity textureTest;
   Transform* quad_tr = new Transform();
   quad_tr->setPosition(0.0f, 0.0f, -2.0f);
-  //float scale = 2.0f;
-  //quad_tr->setScale(scale, scale, 1.0f);
+  quad_tr->setScale(2.0f, 1.0f, 1.0f);
   Geometry* quad_geometry = new Geometry();
   quad_geometry->initWithPrimitive(kPrimitiveType_Quad);
-  //quad_geometry->loadGeometry(quad, 4, quad_indices, 6);
-  //quad_geometry->create();
 
+
+  Material texture_mat;
+  texture_mat.setMaterialType(kMaterialType_TextureSampler);
+  texture_mat.setMaterialTexture(tex2);
+  rm->createMaterial(&texture_mat);
+  textureTest.setMaterial(&texture_mat);
   textureTest.addComponent(quad_tr);
   textureTest.addComponent(quad_geometry);
 
@@ -63,14 +84,8 @@ void UserMain::init()
 
 void UserMain::run(float delta_time)
 {
-  //for (size_t i = 0; i < k_entitiesNumber; i++) {
-  //  Transform* tr = massiveTest[i].getComponent<Transform>(kComponentType_Transform);
-  //  tr->rotateX(accumTime);
-  //  tr->rotateZ(accumTime);
-  //}
-
-
-
+  Transform* colortr = colorTest.getComponent<Transform>(kComponentType_Transform);
+  colortr->rotateY(accumTime);
   accumTime += delta_time;
 }
 

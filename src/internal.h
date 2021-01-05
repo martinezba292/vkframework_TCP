@@ -4,13 +4,26 @@
 #include "common_def.h"
 #include "glm/glm.hpp"
 #include <chrono>
-#include "entity.h"
-#include "camera.h"
+#include <array>
+#include "material.h"
+
+class Entity;
+class Camera;
+
+const uint32 kMaxInstance = 10;
+const uint32 kMaxMaterial = 10;
+const uint32 kMaxTexture = 20;
+const uint32 kTexturePerShader = 10;
 
 struct Scene {
-  static std::vector<Entity> sceneEntities;
-  static std::chrono::steady_clock::time_point lastTime;
   static Camera camera;
+  static std::array<Entity, kMaxInstance> sceneEntities;
+  static std::array<Material, kMaxMaterial> sceneMaterials;
+  static std::array<Texture, kMaxTexture> userTextures;
+  static uint32 textureCount;
+  static uint32 entitiesCount;
+  static uint32 materialCount;
+  static std::chrono::steady_clock::time_point lastTime;
 };
 
 struct Vertex;
@@ -50,6 +63,37 @@ struct InternalVertexData {
   }
 };
 
+/*****************************************************/
+
+struct UnlitUniform {
+  glm::mat4 model;
+  glm::vec4 color;
+};
+
+struct TextureUniform {
+  glm::mat4 model;
+  uint32 textureIndex;
+  glm::vec3 padding;
+};
+
+union UniformBlocks {
+  UnlitUniform unlitBlock;
+  TextureUniform textureBlock;
+};
+
+struct InternalMaterial {
+  VkPipeline matPipeline;
+  VkDescriptorPool matDesciptorPool;
+  std::vector<VkDescriptorSet> matDescriptorSet;
+  uint32 entitiesReferenced = 0;
+  std::vector<uint32> texturesReferenced;
+  std::vector<VkBuffer> uniformBuffers;
+  std::vector<void*> dynamicUniformMapped;
+  std::vector<VkDeviceMemory> uniformBufferMemory;
+  UniformBlocks* dynamicUniformData;
+};
+
+
 struct InternalTexture {
   VkImage textureImage;
   VkDeviceMemory textureImageMemory;
@@ -57,32 +101,8 @@ struct InternalTexture {
   VkSampler textureSampler;
 };
 
-struct InternalMaterial {
-  VkPipeline matPipeline;
-  uint32 uniformSize;
-  VkVertexInputAttributeDescription attribDescription;
-  std::vector<VkVertexInputBindingDescription> bindDescription;
-  UniformBlocks uniformBlocks;
-};
+/*****************************************************/
 
-union UniformBlocks {
-  UnlitUniform unlitBlock;
-  TextureUniform textureBlock;
-  uint8 type;
-};
-
-struct UnlitUniform {
-  glm::vec4 color;
-};
-
-struct TextureUniform {
-  VkSampler samplerUniform;
-
-};
-
-struct UniformBufferObject {
-  glm::mat4 model;
-};
 
 struct SceneUniformBuffer {
   glm::mat4 view;
@@ -95,14 +115,13 @@ struct Resources {
   VkDeviceMemory vertexBufferMemory;
   VkBuffer bufferIndices;
   VkDeviceMemory indexBufferMemory;
-  std::vector<VkBuffer> uniformBuffers;
-  std::vector<void*> dynamicUniformMapped;
-  std::vector<VkDeviceMemory> uniformBufferMemory;
-  std::vector<VkBuffer> sceneUniformBuffers;
+  VkPipelineLayout pipelineLayout;
+  VkDescriptorSetLayout descSetLayout;
   std::vector<void*> staticUniformMapped;
+  std::vector<VkBuffer> sceneUniformBuffers;
   std::vector<VkDeviceMemory> sceneUniformBufferMemory;
-  UniformBufferObject* dynamicUniformData;
-  InternalTexture texture;
+  std::array<InternalMaterial, kMaterialType_MAX> internalMaterials;
+  std::vector<InternalTexture> internalTextures;
 };
 
 
@@ -139,11 +158,6 @@ struct Context {
   std::vector<VkImageView> swapchainImageViews;
   std::vector<VkFramebuffer> swapchainFramebuffers;
   VkRenderPass renderPass;
-  VkPipeline pipeline;
-  VkPipelineLayout pipelineLayout;
-  VkDescriptorSetLayout descriptorLayout;
-  VkDescriptorPool descriptorPool;
-  std::vector<VkDescriptorSet> descriptorSets;
   std::vector<VkSemaphore> recycledSemaphores;
   std::vector<FrameData> perFrame;
   VkCommandPool transferCommandPool;

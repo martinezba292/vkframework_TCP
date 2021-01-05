@@ -4,6 +4,8 @@
 class VertexBuffer;
 class Entity;
 struct Resources;
+class Material;
+class Texture;
 class ResourceManager {
 public:
   ResourceManager();
@@ -14,6 +16,8 @@ public:
 
   void createVertexBuffer(VertexBuffer*);
   void createEntity(Entity*);
+  void createMaterial(Material*);
+  void createTexture(Texture*);
 
 private:
   Resources* resources_;

@@ -4,10 +4,16 @@
 #include "Components/component.h"
 #include <map>
 
+class Material;
+struct MaterialInfo {
+  int32 id;
+  int32 offset;
+};
+
 class Entity {
 public:
   Entity();
-  ~Entity(){}
+  ~Entity();
   Entity(const Entity&);
 
   int32 getId();
@@ -21,10 +27,17 @@ public:
     return nullptr;
   }
 
+  Material* getMaterial();
+  int32 getMaterialOffset();
+
   uint32 addComponent(Component*);
+  int8 setMaterial(Material*);
+
+  void removeComponents();
 
 private:
   int32 id_;
+  MaterialInfo material_;
   std::map<ComponentType, Component*> components_;
 
   friend class ResourceManager;

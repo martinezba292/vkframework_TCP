@@ -14,9 +14,10 @@ public:
   int16 getId();
   std::string getPath();
 private:
-  int16 id_;
+  int32 id_;
   std::string path_;
 
+  friend class ResourceManager;
 };
 
 #endif // __TEXTURE_H__

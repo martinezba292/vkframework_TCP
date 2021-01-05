@@ -8,6 +8,8 @@
 struct QueueFamilyIndices;
 struct SwapChainSupportDetails;
 struct Context;
+struct InternalMaterial;
+struct InternalTexture;
 class Texture;
 
 class StaticHelpers {
@@ -30,13 +32,14 @@ public:
 
   static SwapChainSupportDetails querySwapChain(VkPhysicalDevice device, VkSurfaceKHR surface);
 
+  static VkPipeline createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout& pipelineLayout);
 
 
-  static void createTextureImage(Context* context, Texture texture);
+  static InternalTexture createTextureImage(Context* context, Texture texture);
 
-  static void createTextureImageView(Context* context);
+  static VkImageView createTextureImageView(Context* context, VkImage image);
 
-  static void createTextureSampler(Context* context);
+  static VkSampler createTextureSampler(Context* context);
 
   static void createImage(Context* context, uint32 width, uint32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
                           VkMemoryPropertyFlags property, VkImage& image, VkDeviceMemory& image_memory);
@@ -48,6 +51,8 @@ public:
   static void transitionImageLayout(Context* context, VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout);
 
   static void copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height);
+
+  static void destroyMaterial(Context* context, InternalMaterial* material);
 };
 
 

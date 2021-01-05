@@ -4,6 +4,10 @@
 #include <iterator>
 #include "entity.h"
 #include "Components/geometry.h"
+#include "material.h"
+#include "camera.h"
+#include <array>
+#include "Components/texture.h"
 
 Geometry PrimitiveGeometry::triangle;
 Geometry PrimitiveGeometry::quad;
@@ -12,18 +16,27 @@ Geometry PrimitiveGeometry::sphere;
 
 ResourceManager* ResourceManager::instance_ = nullptr;
 Camera Scene::camera;
-std::vector<Entity> Scene::sceneEntities;
+uint32 Scene::entitiesCount = 0;
+std::array<Entity, kMaxInstance> Scene::sceneEntities;
+uint32 Scene::materialCount = 0;
+std::array<Material, kMaxInstance> Scene::sceneMaterials;
+uint32 Scene::textureCount = 0;
+std::array<Texture, kMaxTexture> Scene::userTextures;
 std::chrono::steady_clock::time_point Scene::lastTime;
+//std::vector<Entity> Scene::sceneEntities;
+//std::vector<Material> Scene::sceneMaterials;
 
 
 ResourceManager::~ResourceManager()
 {
   for (auto& entity : Scene::sceneEntities) {
-    for (auto component : entity.components_) {
-      delete(component.second);
-    }
+    entity.removeComponents();
   }
-  _aligned_free(resources_->dynamicUniformData);
+
+  for (auto& materials : Scene::sceneMaterials) {
+    delete(materials.settings_);
+  }
+
   delete(resources_);
 }
 
@@ -229,10 +242,32 @@ void ResourceManager::createVertexBuffer(VertexBuffer* buffer)
 
 void ResourceManager::createEntity(Entity* new_entity)
 {
-  if (new_entity == nullptr) return;
+  if (!new_entity || new_entity->id_ >= 0) return;
+  if (Scene::entitiesCount >= kMaxInstance) return;
 
-  new_entity->id_ = Scene::sceneEntities.size();
-  Scene::sceneEntities.push_back(*new_entity);
+  new_entity->id_ = Scene::entitiesCount;
+  Scene::sceneEntities[Scene::entitiesCount] = *new_entity;
+  ++Scene::entitiesCount;
+}
+
+void ResourceManager::createMaterial(Material* material)
+{
+  if (!material || material->materialId_ >= 0) return;
+  if (Scene::materialCount >= kMaxMaterial) return;
+
+  material->materialId_ = Scene::materialCount;
+  Scene::sceneMaterials[Scene::materialCount] = *material;
+  ++Scene::materialCount;
+}
+
+void ResourceManager::createTexture(Texture* texture)
+{
+  if (!texture || texture->id_ >= 0) return;
+  if (Scene::textureCount >= kMaxTexture) return;
+
+  texture->id_ = Scene::textureCount;
+  Scene::userTextures[Scene::textureCount] = *texture;
+  ++Scene::textureCount;
 }
 
 ResourceManager::ResourceManager()

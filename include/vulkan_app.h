@@ -39,11 +39,10 @@ private:
   //SWAP CHAIN
   void createSwapChain();
 
-  //IMAGE VIEWS
-  //void createImageViews();
+  void createPipelineLayout();
 
   //SHADERS //VERTEX //VIEWPORT //DRAW MODE
-  void createGraphicsPipeline();
+  void createInternalMaterials();
 
   //Render Pass
   void createRenderPass();
@@ -54,6 +53,8 @@ private:
   //CommandPool
   void createCommandPool();
 
+  void storeTextures();
+
   //Buffers
   void createVertexBuffers();
   void createIndexBuffers();
@@ -61,10 +62,10 @@ private:
   void createDescriptorSetLayout();
   void createDescriptorPool();
   void createDescriptorSets();
-
   void createUniformBuffers();
 
   void updateUniformBuffers(uint32 index);
+
 
  
   void initFrameData(uint32 frame_count);

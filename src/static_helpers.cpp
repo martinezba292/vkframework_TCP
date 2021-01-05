@@ -195,7 +195,163 @@ SwapChainSupportDetails StaticHelpers::querySwapChain(VkPhysicalDevice device, V
   return details;
 }
 
-void StaticHelpers::createTextureImage(Context* context, Texture texture)
+VkPipeline StaticHelpers::createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout& pipelineLayout)
+{
+  auto vertex_shader = StaticHelpers::loadShader(vert_path);
+  auto fragment_shader = StaticHelpers::loadShader(frag_path);
+
+  VkShaderModule vert_module = StaticHelpers::createShaderModule(context->logDevice_, vertex_shader);
+  VkShaderModule frag_module = StaticHelpers::createShaderModule(context->logDevice_, fragment_shader);
+
+  VkPipelineShaderStageCreateInfo vertexShaderInfo{};
+  vertexShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  vertexShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+  vertexShaderInfo.module = vert_module;
+  vertexShaderInfo.pName = "main";
+
+  VkPipelineShaderStageCreateInfo fragmentShaderInfo{};
+  fragmentShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  fragmentShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  fragmentShaderInfo.module = frag_module;
+  fragmentShaderInfo.pName = "main";
+
+  VkPipelineShaderStageCreateInfo shaderInfo[]{ vertexShaderInfo, fragmentShaderInfo };
+
+
+  /*Vertex Input*/
+  /*Get vertex data from the resource manager*/
+  const Resources* mainResources = ResourceManager::Get()->getResources();
+
+  VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+  vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+  vertexInputInfo.vertexBindingDescriptionCount = 1;
+  vertexInputInfo.pVertexBindingDescriptions = &InternalVertexData::getBindingDescription();
+  std::vector<VkVertexInputAttributeDescription> attributeDescription = InternalVertexData::getAttributeDescription();
+  vertexInputInfo.vertexAttributeDescriptionCount = attributeDescription.size();
+  vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data();
+
+  /*Input assembly*/
+  VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+  inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+  /*Viewport and scissors*/
+  VkViewport viewport{};
+  viewport.x = 0.0f;
+  viewport.y = 0.0f;
+  viewport.width = (float)context->swapchainDimensions.width;
+  viewport.height = (float)context->swapchainDimensions.height;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor{};
+  scissor.offset = { 0, 0 };
+  scissor.extent.width = context->swapchainDimensions.width;
+  scissor.extent.height = context->swapchainDimensions.height;
+
+  VkPipelineViewportStateCreateInfo viewportState{};
+  viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+  viewportState.viewportCount = 1;
+  viewportState.pViewports = &viewport;
+  viewportState.scissorCount = 1;
+  viewportState.pScissors = &scissor;
+
+  /*Rasterizer*/
+  VkPipelineRasterizationStateCreateInfo rasterizer{};
+  rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  rasterizer.depthClampEnable = VK_FALSE;
+  rasterizer.rasterizerDiscardEnable = VK_FALSE;
+  rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+  rasterizer.lineWidth = 1.0f;
+  rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+  rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+  rasterizer.depthBiasEnable = VK_FALSE;
+  rasterizer.depthBiasConstantFactor = 0.0f;
+  rasterizer.depthBiasClamp = 0.0f;
+  rasterizer.depthBiasSlopeFactor = 0.0f;
+
+  /*Multisampling*/
+  VkPipelineMultisampleStateCreateInfo multisampler{};
+  multisampler.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+  multisampler.sampleShadingEnable = VK_FALSE;
+  multisampler.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+  multisampler.minSampleShading = 1.0f;
+  multisampler.pSampleMask = nullptr;
+  multisampler.alphaToCoverageEnable = VK_FALSE;
+  multisampler.alphaToOneEnable = VK_FALSE;
+
+  /*VkPipelineDepthStencilStateCreateInfo depthstencil{};*/
+
+  /*Blend / Transparency*/
+  VkPipelineColorBlendAttachmentState blendAttachment{};
+  blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  blendAttachment.blendEnable = VK_FALSE;
+  blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+  blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+  blendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+  blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+  blendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+  VkPipelineColorBlendStateCreateInfo blendState{};
+  blendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+  blendState.logicOpEnable = VK_FALSE;
+  blendState.logicOp = VK_LOGIC_OP_COPY;
+  blendState.attachmentCount = 1;
+  blendState.pAttachments = &blendAttachment;
+  blendState.blendConstants[0] = 0.0f;
+  blendState.blendConstants[1] = 0.0f;
+  blendState.blendConstants[2] = 0.0f;
+  blendState.blendConstants[3] = 0.0f;
+
+
+  /*Pipeline Layout*/
+  //VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+  //pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  //pipelineLayoutInfo.setLayoutCount = 1;
+  //pipelineLayoutInfo.pSetLayouts = &descLayout;
+  ////pipelineLayoutInfo.pushConstantRangeCount = 0;
+  ////pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+  //vkCreatePipelineLayout(context->logDevice_, &pipelineLayoutInfo, nullptr, &pipelineLayout);
+  //assert(vkCreatePipelineLayout(context_->logDevice_, &pipelineLayoutInfo, nullptr, &context_->pipelineLayout) == VK_SUCCESS);
+
+  VkGraphicsPipelineCreateInfo pipelineInfo{};
+  pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  pipelineInfo.stageCount = 2;
+  pipelineInfo.pStages = shaderInfo;
+
+  pipelineInfo.pVertexInputState = &vertexInputInfo;
+  pipelineInfo.pInputAssemblyState = &inputAssembly;
+  pipelineInfo.pViewportState = &viewportState;
+  pipelineInfo.pRasterizationState = &rasterizer;
+  pipelineInfo.pMultisampleState = &multisampler;
+  pipelineInfo.pDepthStencilState = nullptr;
+  pipelineInfo.pColorBlendState = &blendState;
+  pipelineInfo.pDynamicState = nullptr;
+
+  pipelineInfo.layout = pipelineLayout;
+
+  pipelineInfo.renderPass = context->renderPass;
+  pipelineInfo.subpass = 0;
+
+  pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+  pipelineInfo.basePipelineIndex = -1;
+
+  VkPipeline new_pipeline;
+  //assert(vkCreateGraphicsPipelines(context_->logDevice_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &context_->pipeline) == VK_SUCCESS);
+  vkCreateGraphicsPipelines(context->logDevice_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &new_pipeline);
+
+  vkDestroyShaderModule(context->logDevice_, frag_module, nullptr);
+  vkDestroyShaderModule(context->logDevice_, vert_module, nullptr);
+
+  return new_pipeline;
+}
+
+InternalTexture StaticHelpers::createTextureImage(Context* context, Texture texture)
 {
   int32 texWidth, texHeight, texChannels;
   stbi_uc* pixels = stbi_load(texture.getPath().c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -219,27 +375,34 @@ void StaticHelpers::createTextureImage(Context* context, Texture texture)
 
   stbi_image_free(pixels);
 
+  InternalTexture texture_result;
   Resources* res = ResourceManager::Get()->getResources();
   createImage(context, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, 
               VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, res->texture.textureImage, res->texture.textureImageMemory);
+              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture_result.textureImage, texture_result.textureImageMemory);
 
-  transitionImageLayout(context, res->texture.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
+  transitionImageLayout(context, texture_result.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  copyBufferToImage(context, staging_buffer, res->texture.textureImage, 
+  copyBufferToImage(context, staging_buffer, texture_result.textureImage,
                     static_cast<uint32>(texWidth), static_cast<uint32>(texHeight));
-  transitionImageLayout(context, res->texture.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
+  transitionImageLayout(context, texture_result.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
   vkDestroyBuffer(context->logDevice_, staging_buffer, nullptr);
   vkFreeMemory(context->logDevice_, staging_buffer_memory, nullptr);
+
+
+  texture_result.textureImageView = createTextureImageView(context, texture_result.textureImage);
+  texture_result.textureSampler = createTextureSampler(context);
+
+  return texture_result;
 }
 
-void StaticHelpers::createTextureImageView(Context* context)
+VkImageView StaticHelpers::createTextureImageView(Context* context, VkImage image)
 {
   Resources* res = ResourceManager::Get()->getResources();
   VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-  viewInfo.image = res->texture.textureImage;
+  viewInfo.image = image;
   viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
   viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
   viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -248,12 +411,15 @@ void StaticHelpers::createTextureImageView(Context* context)
   viewInfo.subresourceRange.baseArrayLayer = 0;
   viewInfo.subresourceRange.layerCount = 1;
 
-  if (vkCreateImageView(context->logDevice_, &viewInfo, nullptr, &res->texture.textureImageView) != VK_SUCCESS) {
+  VkImageView image_view_result;
+  if (vkCreateImageView(context->logDevice_, &viewInfo, nullptr, &image_view_result) != VK_SUCCESS) {
     throw std::runtime_error("failed to create image view");
   }
+
+  return image_view_result;
 }
 
-void StaticHelpers::createTextureSampler(Context* context)
+VkSampler StaticHelpers::createTextureSampler(Context* context)
 {
   VkSamplerCreateInfo samplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
   samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -282,9 +448,12 @@ void StaticHelpers::createTextureSampler(Context* context)
 
   Resources* res = ResourceManager::Get()->getResources();
 
-  if (vkCreateSampler(context->logDevice_, &samplerInfo, nullptr, &res->texture.textureSampler) != VK_SUCCESS) {
+  VkSampler sampler_result;
+  if (vkCreateSampler(context->logDevice_, &samplerInfo, nullptr, &sampler_result) != VK_SUCCESS) {
     throw std::runtime_error("\nFailed to create texture sampler");
   }
+
+  return sampler_result;
 }
 
 void StaticHelpers::createImage(Context* context, uint32 width, uint32 height, 
@@ -424,5 +593,23 @@ void StaticHelpers::copyBufferToImage(Context* context, VkBuffer buffer, VkImage
   vkCmdCopyBufferToImage(cmd_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
   endSingleTimeCommands(context, cmd_buffer);
+}
+
+void StaticHelpers::destroyMaterial(Context* context, InternalMaterial* material)
+{
+  vkDestroyPipeline(context->logDevice_, material->matPipeline, nullptr);
+  //vkDestroyPipelineLayout(context->logDevice_, material->pipelineLayout, nullptr);
+
+  for (size_t i = 0; i < material->uniformBuffers.size(); i++) {
+    vkDestroyBuffer(context->logDevice_, material->uniformBuffers[i], nullptr);
+    vkFreeMemory(context->logDevice_, material->uniformBufferMemory[i], nullptr);
+  }
+
+  vkDestroyDescriptorPool(context->logDevice_, material->matDesciptorPool, nullptr);
+
+  //vkDestroyDescriptorSetLayout(context->logDevice_, material->matSetLayout, nullptr);
+
+  _aligned_free(material->dynamicUniformData);
+
 }
 

@@ -12,13 +12,16 @@ layout(binding = 0) uniform SceneUniformBuffer {
 
 layout(binding = 1) uniform UniformBufferObject {
     mat4 model;
+    vec4 color;
 } ubo;
 
+layout(location = 0) out vec4 outColor;
 //layout(location = 0) out vec3 outNormal;
-layout(location = 1) out vec2 outUv;
+//layout(location = 1) out vec2 outUv;
 
 void main() {
     gl_Position = sb.proj * sb.view * ubo.model * vec4(inPosition, 1.0);
+    outColor = ubo.color;
     //outNormal = inNormal;
-    outUv = inUv;
+    //outUv = inUv;
 }
