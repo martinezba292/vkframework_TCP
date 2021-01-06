@@ -11,7 +11,7 @@ struct Context;
 struct InternalMaterial;
 struct InternalTexture;
 class Texture;
-
+enum LayoutType;
 class StaticHelpers {
 public:
   static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR& surface);
@@ -32,12 +32,12 @@ public:
 
   static SwapChainSupportDetails querySwapChain(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-  static VkPipeline createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout& pipelineLayout);
+  static VkPipeline createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout pipelineLayout);
 
 
   static InternalTexture createTextureImage(Context* context, Texture texture);
 
-  static VkImageView createTextureImageView(Context* context, VkImage image);
+  static VkImageView createTextureImageView(Context* context, VkImage image, VkFormat format, VkImageAspectFlags flags);
 
   static VkSampler createTextureSampler(Context* context);
 
@@ -53,6 +53,10 @@ public:
   static void copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height);
 
   static void destroyMaterial(Context* context, InternalMaterial* material);
+
+  static VkFormat findSupportedFormats(Context* context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+
+  static VkFormat findDepthFormat(Context* context);
 };
 
 

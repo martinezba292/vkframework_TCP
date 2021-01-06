@@ -13,6 +13,7 @@
 #include "camera.h"
 #include "entity.h"
 #include "material.h"
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -383,29 +384,10 @@ void VulkanApp::createSwapChain()
   context_->perFrame.resize(swapImageCount);
 
   initFrameData(swapImageCount);
-
+  context_->swapchainImageViews.resize(swapImageCount);
   for (size_t i = 0; i < swapImageCount; i++) {
-    VkImageViewCreateInfo imageViewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-    imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    imageViewInfo.image = swap_chain_images[i];
-    imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; //1D, 2D, 3D, CUBEMAP
-    imageViewInfo.format = context_->swapchainDimensions.format;
-
-    imageViewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    imageViewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    imageViewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    imageViewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-    imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageViewInfo.subresourceRange.baseMipLevel = 0;
-    imageViewInfo.subresourceRange.levelCount = 1;
-    imageViewInfo.subresourceRange.baseArrayLayer = 0;
-    imageViewInfo.subresourceRange.layerCount = 1;
-
-    VkImageView image_view;
-    //assert(vkCreateImageView(context_->logDevice_, &imageViewInfo, nullptr, &image_view) == VK_SUCCESS);
-    vkCreateImageView(context_->logDevice_, &imageViewInfo, nullptr, &image_view);
-    context_->swapchainImageViews.push_back(image_view);
+    context_->swapchainImageViews[i] = StaticHelpers::createTextureImageView(context_, swap_chain_images[i], 
+                                                                             surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT);
   }
 
 }
@@ -416,14 +398,16 @@ void VulkanApp::createPipelineLayout()
 {
   Resources* res = ResourceManager::Get()->getResources();
 
-  VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-  pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  pipelineLayoutInfo.setLayoutCount = 1;
-  pipelineLayoutInfo.pSetLayouts = &res->descSetLayout;
-  //pipelineLayoutInfo.pushConstantRangeCount = 0;
-  //pipelineLayoutInfo.pPushConstantRanges = nullptr;
+  for (size_t i = 0; i <  kLayoutType_MAX; i++) {
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &res->layouts[i].descriptor;
+    //pipelineLayoutInfo.pushConstantRangeCount = 0;
+    //pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-  vkCreatePipelineLayout(context_->logDevice_, &pipelineLayoutInfo, nullptr, &res->pipelineLayout);
+    vkCreatePipelineLayout(context_->logDevice_, &pipelineLayoutInfo, nullptr, &res->layouts[i].pipeline);
+  }
 }
 
 /*********************************************************************************************/
@@ -432,14 +416,16 @@ void VulkanApp::createInternalMaterials()
 {
   Resources* res = ResourceManager::Get()->getResources();
   InternalMaterial* material = &res->internalMaterials[kMaterialType_UnlitColor];
+  material->layout = kLayoutType_Simple_2Binds;
   material->matPipeline = StaticHelpers::createPipeline(context_, "./../../src/shaders/unlit_color_vert.spv", 
                                                         "./../../src/shaders/unlit_color_frag.spv",
-                                                        res->pipelineLayout);
+                                                        res->layouts[kLayoutType_Simple_2Binds].pipeline);
 
   material = &res->internalMaterials[kMaterialType_TextureSampler];
+  material->layout = kLayoutType_Texture_3Binds;
   material->matPipeline = StaticHelpers::createPipeline(context_, "./../../src/shaders/texture_sampling_vert.spv",
                                                         "./../../src/shaders/texture_sampling_frag.spv",
-                                                        res->pipelineLayout);
+                                                        res->layouts[kLayoutType_Texture_3Binds].pipeline);
 }
 
 /*********************************************************************************************/
@@ -463,29 +449,47 @@ void VulkanApp::createRenderPass()
   colorAttachmentRef.attachment = 0;
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+  VkAttachmentDescription depth_attachment{};
+  depth_attachment.format = StaticHelpers::findDepthFormat(context_);
+  depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference depth_ref{};
+  depth_ref.attachment = 1;
+  depth_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
   VkSubpassDescription subpass{};
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   subpass.colorAttachmentCount = 1;
   subpass.pColorAttachments = &colorAttachmentRef;
-
-  VkRenderPassCreateInfo renderPassInfo{};
-  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount = 1;
-  renderPassInfo.pAttachments = &colorAttachment;
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpass;
+  subpass.pDepthStencilAttachment = &depth_ref;
 
   /*SUBPASS*/
   VkSubpassDependency subpassDependency{};
   subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
   subpassDependency.dstSubpass = 0;
-  subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
   subpassDependency.srcAccessMask = 0;
-  subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+  subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+  std::array<VkAttachmentDescription, 2> attachments{ colorAttachment, depth_attachment };
+
+  VkRenderPassCreateInfo renderPassInfo{};
+  renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderPassInfo.attachmentCount = static_cast<uint32>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
+  renderPassInfo.subpassCount = 1;
+  renderPassInfo.pSubpasses = &subpass;
   renderPassInfo.dependencyCount = 1;
   renderPassInfo.pDependencies = &subpassDependency;
+
+  
 
   //assert(vkCreateRenderPass(context_->logDevice_, &renderPassInfo, nullptr, &context_->renderPass) == VK_SUCCESS);
   vkCreateRenderPass(context_->logDevice_, &renderPassInfo, nullptr, &context_->renderPass);
@@ -498,17 +502,15 @@ void VulkanApp::createFramebuffer()
 {
   int32 imageCount = context_->swapchainImageViews.size();
   context_->swapchainFramebuffers.resize(imageCount);
-
   for (size_t i = 0; i < imageCount; i++) {
-    VkImageView attachment{ context_->swapchainImageViews[i] };
-
+    std::array<VkImageView, 2> attachment = { context_->swapchainImageViews[i], context_->depthAttachment.textureImageView };
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass = context_->renderPass;
-    framebufferInfo.attachmentCount = 1;
+    framebufferInfo.attachmentCount = static_cast<uint32>(attachment.size());
 
     /// !!!!!!!!!!!!!!!!!!!!!! ///
-    framebufferInfo.pAttachments = &attachment;
+    framebufferInfo.pAttachments = attachment.data();
     framebufferInfo.width = context_->swapchainDimensions.width;
     framebufferInfo.height = context_->swapchainDimensions.height;
     framebufferInfo.layers = 1;
@@ -532,6 +534,21 @@ void VulkanApp::createCommandPool()
   //assert(vkCreateCommandPool(context_->logDevice_, &commandPoolInfo, nullptr, &context_->transferCommandPool) == VK_SUCCESS);
   vkCreateCommandPool(context_->logDevice_, &commandPoolInfo, nullptr, &context_->transferCommandPool);
 
+}
+
+/*********************************************************************************************/
+
+void VulkanApp::createDepthResource()
+{
+  VkFormat depth_format = StaticHelpers::findDepthFormat(context_);
+  Resources* res = ResourceManager::Get()->getResources();
+
+  InternalTexture* depth = &context_->depthAttachment;
+  StaticHelpers::createImage(context_, k_wWidth, k_wHeight, depth_format, VK_IMAGE_TILING_OPTIMAL, 
+                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+                             depth->textureImage, depth->textureImageMemory);
+
+  depth->textureImageView = StaticHelpers::createTextureImageView(context_, depth->textureImage, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 /*********************************************************************************************/
@@ -637,32 +654,54 @@ void VulkanApp::createDescriptorSetLayout()
 {
   Resources* res = ResourceManager::Get()->getResources();
 
-  std::vector<VkDescriptorSetLayoutBinding> textureLayoutBinding(3);
-  textureLayoutBinding[0].binding = 0;
-  textureLayoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  textureLayoutBinding[0].descriptorCount = 1;
-  textureLayoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-  textureLayoutBinding[0].pImmutableSamplers = nullptr;
+  std::vector<VkDescriptorSetLayoutBinding> layoutBinding(2);
+  layoutBinding[0].binding = 0;
+  layoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  layoutBinding[0].descriptorCount = 1;
+  layoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  layoutBinding[0].pImmutableSamplers = nullptr;
 
-  textureLayoutBinding[1].binding = 1;
-  textureLayoutBinding[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-  textureLayoutBinding[1].descriptorCount = 1;
-  textureLayoutBinding[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-  textureLayoutBinding[1].pImmutableSamplers = nullptr;
+  layoutBinding[1].binding = 1;
+  layoutBinding[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+  layoutBinding[1].descriptorCount = 1;
+  layoutBinding[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  layoutBinding[1].pImmutableSamplers = nullptr;
 
-  textureLayoutBinding[2].binding = 2;
-  textureLayoutBinding[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  textureLayoutBinding[2].descriptorCount = kTexturePerShader;
-  textureLayoutBinding[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  textureLayoutBinding[2].pImmutableSamplers = nullptr;
 
   VkDescriptorSetLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  layoutInfo.bindingCount = static_cast<uint32>(textureLayoutBinding.size());
-  layoutInfo.pBindings = textureLayoutBinding.data();
+  layoutInfo.bindingCount = static_cast<uint32>(layoutBinding.size());
+  layoutInfo.pBindings = layoutBinding.data();
+
+  if (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+                                  &res->layouts[kLayoutType_Simple_2Binds].descriptor) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to create descriptor set layout");
+  }
+
+  std::vector<VkDescriptorSetLayoutBinding> layoutBinding3(3);
+  layoutBinding3[0].binding = 0;
+  layoutBinding3[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  layoutBinding3[0].descriptorCount = 1;
+  layoutBinding3[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  layoutBinding3[0].pImmutableSamplers = nullptr;
+
+  layoutBinding3[1].binding = 1;
+  layoutBinding3[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+  layoutBinding3[1].descriptorCount = 1;
+  layoutBinding3[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  layoutBinding3[1].pImmutableSamplers = nullptr;
+
+  layoutBinding3[2].binding = 2;
+  layoutBinding3[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  layoutBinding3[2].descriptorCount = kTexturePerShader;
+  layoutBinding3[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  layoutBinding3[2].pImmutableSamplers = nullptr;
+
+  layoutInfo.bindingCount = static_cast<uint32>(layoutBinding3.size());
+  layoutInfo.pBindings = layoutBinding3.data();
 
   if (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr, 
-                                  &res->descSetLayout) != VK_SUCCESS) {
+                                  &res->layouts[kLayoutType_Texture_3Binds].descriptor) != VK_SUCCESS) {
     throw std::runtime_error("Failed to create descriptor set layout");
   }
   
@@ -705,11 +744,12 @@ void VulkanApp::createDescriptorPool()
 void VulkanApp::createDescriptorSets()
 {
   Resources* resources = ResourceManager::Get()->getResources();
-  std::vector<VkDescriptorSetLayout> layouts(context_->swapchainImageViews.size(), resources->descSetLayout);
 
   for (size_t j = 0; j < kMaterialType_MAX; j++) {
     InternalMaterial* mat = &resources->internalMaterials[j];
     if (!mat->uniformBuffers.empty()) {
+      std::vector<VkDescriptorSetLayout> layouts(context_->swapchainImageViews.size(), 
+                                         resources->layouts[mat->layout].descriptor);
       VkDescriptorSetAllocateInfo allocInfo{};
       allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
       allocInfo.descriptorPool = mat->matDesciptorPool;
@@ -986,16 +1026,17 @@ void VulkanApp::render(uint32 index)
 
   vkBeginCommandBuffer(cmd_buffer, &begin_info);
   
-  VkClearValue clearColor;
-  clearColor.color = { 0.1f, 0.1f, 0.2f, 1.0f };
+  std::array<VkClearValue, 2> clearColor{};
+  clearColor[0].color = { 0.1f, 0.3f, 0.8f, 1.0f };
+  clearColor[1].depthStencil = { 1.0f, 0 };
 
   VkRenderPassBeginInfo rp_begin{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
   rp_begin.renderPass = context_->renderPass;
   rp_begin.framebuffer = framebuffer;
   rp_begin.renderArea.extent.width = context_->swapchainDimensions.width;
   rp_begin.renderArea.extent.height = context_->swapchainDimensions.height;
-  rp_begin.clearValueCount = 1;
-  rp_begin.pClearValues = &clearColor;
+  rp_begin.clearValueCount = clearColor.size();
+  rp_begin.pClearValues = clearColor.data();
 
   vkCmdBeginRenderPass(cmd_buffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -1014,7 +1055,7 @@ void VulkanApp::render(uint32 index)
       vkCmdBindVertexBuffers(cmd_buffer, 0, 1, vertexBuffers, offsets);
       vkCmdBindIndexBuffer(cmd_buffer, intResources->bufferIndices, 0, VK_INDEX_TYPE_UINT32);
       vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              intResources->pipelineLayout, 0, 1,
+                              intResources->layouts[internalMat->layout].pipeline, 0, 1,
                               &internalMat->matDescriptorSet[index], 1, &uniform_offset);
 
       Geometry* geo = entity.getComponent<Geometry>(kComponentType_Geometry);
@@ -1128,8 +1169,9 @@ void VulkanApp::start()
   createDescriptorSetLayout();
   createPipelineLayout();
   createInternalMaterials();
-  createFramebuffer();
   createCommandPool();
+  createDepthResource();
+  createFramebuffer();
   storeTextures();
   createVertexBuffers();
   createIndexBuffers();
@@ -1178,6 +1220,11 @@ void VulkanApp::end()
 
   ResourceManager* rm = ResourceManager::Get();
   Resources* intResources = rm->getResources();
+  for (auto& layout : rm->getResources()->layouts) {
+    vkDestroyPipelineLayout(context_->logDevice_, layout.pipeline, nullptr);
+    vkDestroyDescriptorSetLayout(context_->logDevice_, layout.descriptor, nullptr);
+  }
+
   for (auto& material : intResources->internalMaterials) {
     StaticHelpers::destroyMaterial(context_, &material);
   }
@@ -1185,6 +1232,9 @@ void VulkanApp::end()
   vkDestroyRenderPass(context_->logDevice_, context_->renderPass, nullptr);
 
   //Swap chain
+  vkDestroyImage(context_->logDevice_, context_->depthAttachment.textureImage, nullptr);
+  vkDestroyImageView(context_->logDevice_, context_->depthAttachment.textureImageView, nullptr);
+  vkFreeMemory(context_->logDevice_, context_->depthAttachment.textureImageMemory, nullptr);
   for (auto image_view : context_->swapchainImageViews) {
     vkDestroyImageView(context_->logDevice_, image_view, nullptr);
   }

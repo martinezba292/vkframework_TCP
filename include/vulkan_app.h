@@ -53,6 +53,8 @@ private:
   //CommandPool
   void createCommandPool();
 
+  void createDepthResource();
+
   void storeTextures();
 
   //Buffers

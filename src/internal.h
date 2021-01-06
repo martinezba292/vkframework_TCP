@@ -81,10 +81,18 @@ union UniformBlocks {
   TextureUniform textureBlock;
 };
 
+enum LayoutType {
+  kLayoutType_NONE = -1,
+  kLayoutType_Simple_2Binds = 0,
+  kLayoutType_Texture_3Binds = 1,
+  kLayoutType_MAX
+};
+
 struct InternalMaterial {
   VkPipeline matPipeline;
   VkDescriptorPool matDesciptorPool;
   std::vector<VkDescriptorSet> matDescriptorSet;
+  LayoutType layout;
   uint32 entitiesReferenced = 0;
   std::vector<uint32> texturesReferenced;
   std::vector<VkBuffer> uniformBuffers;
@@ -109,17 +117,23 @@ struct SceneUniformBuffer {
   glm::mat4 projection;
 };
 
+
+
+struct PipelineSettings {
+  VkPipelineLayout pipeline;
+  VkDescriptorSetLayout descriptor;
+};
+
 struct Resources {
   std::vector<InternalVertexData> vertex_data;
   VkBuffer bufferObject;
   VkDeviceMemory vertexBufferMemory;
   VkBuffer bufferIndices;
   VkDeviceMemory indexBufferMemory;
-  VkPipelineLayout pipelineLayout;
-  VkDescriptorSetLayout descSetLayout;
   std::vector<void*> staticUniformMapped;
   std::vector<VkBuffer> sceneUniformBuffers;
   std::vector<VkDeviceMemory> sceneUniformBufferMemory;
+  std::array<PipelineSettings, kLayoutType_MAX> layouts;
   std::array<InternalMaterial, kMaterialType_MAX> internalMaterials;
   std::vector<InternalTexture> internalTextures;
 };
@@ -161,6 +175,7 @@ struct Context {
   std::vector<VkSemaphore> recycledSemaphores;
   std::vector<FrameData> perFrame;
   VkCommandPool transferCommandPool;
+  InternalTexture depthAttachment;
 };
 
 /***************************************************/

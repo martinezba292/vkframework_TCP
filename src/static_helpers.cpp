@@ -195,7 +195,7 @@ SwapChainSupportDetails StaticHelpers::querySwapChain(VkPhysicalDevice device, V
   return details;
 }
 
-VkPipeline StaticHelpers::createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout& pipelineLayout)
+VkPipeline StaticHelpers::createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout pipelineLayout)
 {
   auto vertex_shader = StaticHelpers::loadShader(vert_path);
   auto fragment_shader = StaticHelpers::loadShader(frag_path);
@@ -307,17 +307,18 @@ VkPipeline StaticHelpers::createPipeline(Context* context, const char* vert_path
   blendState.blendConstants[2] = 0.0f;
   blendState.blendConstants[3] = 0.0f;
 
+  VkPipelineDepthStencilStateCreateInfo depth_stencil{};
+  depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+  depth_stencil.depthTestEnable = VK_TRUE;
+  depth_stencil.depthWriteEnable = VK_TRUE;
+  depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
+  depth_stencil.depthBoundsTestEnable = VK_FALSE;
+  depth_stencil.minDepthBounds = 0.0f;
+  depth_stencil.maxDepthBounds = 1.0f;
 
-  /*Pipeline Layout*/
-  //VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-  //pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  //pipelineLayoutInfo.setLayoutCount = 1;
-  //pipelineLayoutInfo.pSetLayouts = &descLayout;
-  ////pipelineLayoutInfo.pushConstantRangeCount = 0;
-  ////pipelineLayoutInfo.pPushConstantRanges = nullptr;
-
-  //vkCreatePipelineLayout(context->logDevice_, &pipelineLayoutInfo, nullptr, &pipelineLayout);
-  //assert(vkCreatePipelineLayout(context_->logDevice_, &pipelineLayoutInfo, nullptr, &context_->pipelineLayout) == VK_SUCCESS);
+  depth_stencil.stencilTestEnable = VK_FALSE;
+  depth_stencil.front = {};
+  depth_stencil.back = {};
 
   VkGraphicsPipelineCreateInfo pipelineInfo{};
   pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -329,7 +330,7 @@ VkPipeline StaticHelpers::createPipeline(Context* context, const char* vert_path
   pipelineInfo.pViewportState = &viewportState;
   pipelineInfo.pRasterizationState = &rasterizer;
   pipelineInfo.pMultisampleState = &multisampler;
-  pipelineInfo.pDepthStencilState = nullptr;
+  pipelineInfo.pDepthStencilState = &depth_stencil;
   pipelineInfo.pColorBlendState = &blendState;
   pipelineInfo.pDynamicState = nullptr;
 
@@ -392,20 +393,21 @@ InternalTexture StaticHelpers::createTextureImage(Context* context, Texture text
   vkFreeMemory(context->logDevice_, staging_buffer_memory, nullptr);
 
 
-  texture_result.textureImageView = createTextureImageView(context, texture_result.textureImage);
+  texture_result.textureImageView = createTextureImageView(context, texture_result.textureImage, 
+                                                           VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
   texture_result.textureSampler = createTextureSampler(context);
 
   return texture_result;
 }
 
-VkImageView StaticHelpers::createTextureImageView(Context* context, VkImage image)
+VkImageView StaticHelpers::createTextureImageView(Context* context, VkImage image, VkFormat format, VkImageAspectFlags flags)
 {
   Resources* res = ResourceManager::Get()->getResources();
   VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
   viewInfo.image = image;
   viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-  viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  viewInfo.format = format;
+  viewInfo.subresourceRange.aspectMask = flags;
   viewInfo.subresourceRange.baseMipLevel = 0;
   viewInfo.subresourceRange.levelCount = 1;
   viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -488,7 +490,7 @@ void StaticHelpers::createImage(Context* context, uint32 width, uint32 height,
   VkMemoryAllocateInfo allocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex = findMemoryType(context->physDevice_, memRequirements.memoryTypeBits, 
-                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                             property);
 
   if (vkAllocateMemory(context->logDevice_, &allocInfo, nullptr, &image_memory) != VK_SUCCESS) {
     throw std::runtime_error("\Failed to allocate texture memory");
@@ -598,7 +600,6 @@ void StaticHelpers::copyBufferToImage(Context* context, VkBuffer buffer, VkImage
 void StaticHelpers::destroyMaterial(Context* context, InternalMaterial* material)
 {
   vkDestroyPipeline(context->logDevice_, material->matPipeline, nullptr);
-  //vkDestroyPipelineLayout(context->logDevice_, material->pipelineLayout, nullptr);
 
   for (size_t i = 0; i < material->uniformBuffers.size(); i++) {
     vkDestroyBuffer(context->logDevice_, material->uniformBuffers[i], nullptr);
@@ -606,10 +607,35 @@ void StaticHelpers::destroyMaterial(Context* context, InternalMaterial* material
   }
 
   vkDestroyDescriptorPool(context->logDevice_, material->matDesciptorPool, nullptr);
-
-  //vkDestroyDescriptorSetLayout(context->logDevice_, material->matSetLayout, nullptr);
-
   _aligned_free(material->dynamicUniformData);
+
+}
+
+VkFormat StaticHelpers::findSupportedFormats(Context* context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+  for (VkFormat format : candidates) {
+    VkFormatProperties properties;
+    vkGetPhysicalDeviceFormatProperties(context->physDevice_, format, &properties);
+
+    if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features) {
+      return format;
+    }
+    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+
+  throw std::runtime_error("Failed to find supported format");
+
+}
+
+VkFormat StaticHelpers::findDepthFormat(Context* context)
+{
+  return findSupportedFormats(context,
+    { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+    VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+  );
+
 
 }
 

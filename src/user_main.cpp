@@ -47,10 +47,10 @@ void UserMain::init()
   Geometry* colorGeo = new Geometry();
   colorGeo->initWithPrimitive(kPrimitiveType_Sphere);
   Material color_mat;
-  color_mat.setMaterialType(kMaterialType_UnlitColor);
-  glm::vec3 color1 = { 1.0f, 0.2f, 0.0f };
-  color_mat.setMaterialColor(color1);
-  //color_mat.setMaterialTexture(tex);
+  color_mat.setMaterialType(kMaterialType_TextureSampler);
+  //glm::vec3 color1 = { 0.4f, 0.7f, 0.0f };
+  //color_mat.setMaterialColor(color1);
+  color_mat.setMaterialTexture(tex);
   rm->createMaterial(&color_mat);
   colorTest.addComponent(colorTr);
   colorTest.addComponent(colorGeo);
@@ -86,6 +86,7 @@ void UserMain::run(float delta_time)
 {
   Transform* colortr = colorTest.getComponent<Transform>(kComponentType_Transform);
   colortr->rotateY(accumTime);
+  colortr->rotateX(accumTime);
   accumTime += delta_time;
 }
 
