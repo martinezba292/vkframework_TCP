@@ -56,73 +56,49 @@ uint32 StaticHelpers::findMemoryType(VkPhysicalDevice device, uint32 typeFilter,
 
 /***************************************************************************************************/
 
-void StaticHelpers::createInternalBuffer(Context context, VkDeviceSize size, VkBufferUsageFlags usage, 
-                                         VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-{
-  VkBufferCreateInfo bufferInfo{};
-  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  bufferInfo.size = size;
-  bufferInfo.usage = usage;
-  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-  //assert(vkCreateBuffer(context.logDevice_, &bufferInfo, nullptr, &buffer) == VK_SUCCESS);
-  vkCreateBuffer(context.logDevice_, &bufferInfo, nullptr, &buffer);
-
-  VkMemoryRequirements memRequirements;
-  vkGetBufferMemoryRequirements(context.logDevice_, buffer, &memRequirements);
-
-  VkMemoryAllocateInfo allocInfo{};
-  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  allocInfo.allocationSize = memRequirements.size;
-  allocInfo.memoryTypeIndex = findMemoryType(context.physDevice_,
-    memRequirements.memoryTypeBits,
-    properties);
-
-  //assert(vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory) == VK_SUCCESS);
-  vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory);
-
-  vkBindBufferMemory(context.logDevice_, buffer, bufferMemory, 0);
-}
-
-/***************************************************************************************************/
-
-void StaticHelpers::copyBuffer(Context context, VkBuffer srcBuffer, VkBuffer dstBuffer, 
-                               VkDeviceSize bufferSize, VkDeviceSize dstOffset /*= 0*/)
-{
-  /*VkCommandBufferAllocateInfo allocInfo{};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandPool = context.transferCommandPool;
-  allocInfo.commandBufferCount = 1;*/
-
-  VkCommandBuffer commandBuffer = beginSingleTimeCommands(&context);
-  /*vkAllocateCommandBuffers(context.logDevice_, &allocInfo, &commandBuffer);
-
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-  vkBeginCommandBuffer(commandBuffer, &beginInfo);*/
-
-  VkBufferCopy copyRegion{};
-  copyRegion.srcOffset = 0;
-  copyRegion.dstOffset = dstOffset;
-  copyRegion.size = bufferSize;
-  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-  endSingleTimeCommands(&context, commandBuffer);
-
-  /*vkEndCommandBuffer(commandBuffer);
-
-  VkSubmitInfo submitInfo{};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer;
-
-  vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(context.graphicsQueue);
-
-  vkFreeCommandBuffers(context.logDevice_, context.transferCommandPool, 1, &commandBuffer);*/
-}
+//void StaticHelpers::createInternalBuffer(Context context, VkDeviceSize size, VkBufferUsageFlags usage, 
+//                                         VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+//{
+//  VkBufferCreateInfo bufferInfo{};
+//  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+//  bufferInfo.size = size;
+//  bufferInfo.usage = usage;
+//  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+//
+//  //assert(vkCreateBuffer(context.logDevice_, &bufferInfo, nullptr, &buffer) == VK_SUCCESS);
+//  vkCreateBuffer(context.logDevice_, &bufferInfo, nullptr, &buffer);
+//
+//  VkMemoryRequirements memRequirements;
+//  vkGetBufferMemoryRequirements(context.logDevice_, buffer, &memRequirements);
+//
+//  VkMemoryAllocateInfo allocInfo{};
+//  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+//  allocInfo.allocationSize = memRequirements.size;
+//  allocInfo.memoryTypeIndex = findMemoryType(context.physDevice_,
+//    memRequirements.memoryTypeBits,
+//    properties);
+//
+//  //assert(vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory) == VK_SUCCESS);
+//  vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory);
+//
+//  vkBindBufferMemory(context.logDevice_, buffer, bufferMemory, 0);
+//}
+//
+///***************************************************************************************************/
+//
+//void StaticHelpers::copyBuffer(Context context, VkBuffer srcBuffer, VkBuffer dstBuffer, 
+//                               VkDeviceSize bufferSize, VkDeviceSize dstOffset /*= 0*/)
+//{
+//  VkCommandBuffer commandBuffer = beginSingleTimeCommands(&context);
+//
+//  VkBufferCopy copyRegion{};
+//  copyRegion.srcOffset = 0;
+//  copyRegion.dstOffset = dstOffset;
+//  copyRegion.size = bufferSize;
+//  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+//
+//  endSingleTimeCommands(&context, commandBuffer);
+//}
 
 /***************************************************************************************************/
 
@@ -362,17 +338,20 @@ InternalTexture StaticHelpers::createTextureImage(Context* context, Texture text
   }
 
   VkDeviceSize imageSize = (uint64_t)(texWidth) * (uint64_t)(texHeight) * 4;
-  VkBuffer staging_buffer;
-  VkDeviceMemory staging_buffer_memory;
+  //VkBuffer staging_buffer;
+  //VkDeviceMemory staging_buffer_memory;
   
-  createInternalBuffer(*context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+  vkdev::Buffer staging_buffer;
+  staging_buffer.createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  /*createInternalBuffer(*context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    staging_buffer, staging_buffer_memory);
+    staging_buffer, staging_buffer_memory);*/
 
   void* data;
-  vkMapMemory(context->logDevice_, staging_buffer_memory, 0, imageSize, 0, &data);
+  vkMapMemory(context->logDevice_, staging_buffer.memory_, 0, imageSize, 0, &data);
   memcpy(data, pixels, imageSize);
-  vkUnmapMemory(context->logDevice_, staging_buffer_memory);
+  vkUnmapMemory(context->logDevice_, staging_buffer.memory_);
 
   stbi_image_free(pixels);
 
@@ -384,13 +363,13 @@ InternalTexture StaticHelpers::createTextureImage(Context* context, Texture text
 
   transitionImageLayout(context, texture_result.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  copyBufferToImage(context, staging_buffer, texture_result.textureImage,
+  copyBufferToImage(context, staging_buffer.buffer_, texture_result.textureImage,
                     static_cast<uint32>(texWidth), static_cast<uint32>(texHeight));
   transitionImageLayout(context, texture_result.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  vkDestroyBuffer(context->logDevice_, staging_buffer, nullptr);
-  vkFreeMemory(context->logDevice_, staging_buffer_memory, nullptr);
+  vkDestroyBuffer(context->logDevice_, staging_buffer.buffer_, nullptr);
+  vkFreeMemory(context->logDevice_, staging_buffer.memory_, nullptr);
 
 
   texture_result.textureImageView = createTextureImageView(context, texture_result.textureImage, 
@@ -600,10 +579,8 @@ void StaticHelpers::copyBufferToImage(Context* context, VkBuffer buffer, VkImage
 void StaticHelpers::destroyMaterial(Context* context, InternalMaterial* material)
 {
   vkDestroyPipeline(context->logDevice_, material->matPipeline, nullptr);
-
-  for (size_t i = 0; i < material->uniformBuffers.size(); i++) {
-    vkDestroyBuffer(context->logDevice_, material->uniformBuffers[i], nullptr);
-    vkFreeMemory(context->logDevice_, material->uniformBufferMemory[i], nullptr);
+  for (auto& buffer : material->dynamicUniform) {
+    buffer.destroyBuffer();
   }
 
   vkDestroyDescriptorPool(context->logDevice_, material->matDesciptorPool, nullptr);
@@ -635,7 +612,5 @@ VkFormat StaticHelpers::findDepthFormat(Context* context)
     { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
     VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
   );
-
-
 }
 

@@ -28,6 +28,7 @@ project "VulkanTestProject"
 
 	includedirs {
 		"./include/",
+		"./src/dev/",
 		"./deps/glfw/include/",
 		"./deps/GLM/",
 		"./deps/sokol/",
@@ -56,7 +57,8 @@ project "VulkanTestProject"
 			"./include/Components/**.h",
 			"./src/Components/**.cpp",
 			"./src/**.cpp",
-			"./src/**.h",
+			"./src/dev/**.h",
+			"./src/dev/**.cpp",
 
 
 			-- GLFW files --

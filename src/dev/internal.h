@@ -1,11 +1,11 @@
 #ifndef __INTERNAL_DATA__
 #define __INTERNAL_DATA__ 1
 
-#include "common_def.h"
 #include "glm/glm.hpp"
 #include <chrono>
 #include <array>
 #include "material.h"
+#include "buffer.h"
 
 class Entity;
 class Camera;
@@ -81,6 +81,11 @@ union UniformBlocks {
   TextureUniform textureBlock;
 };
 
+struct SceneUniformBuffer {
+  glm::mat4 view;
+  glm::mat4 projection;
+};
+
 enum LayoutType {
   kLayoutType_NONE = -1,
   kLayoutType_Simple_2Binds = 0,
@@ -95,9 +100,7 @@ struct InternalMaterial {
   LayoutType layout;
   uint32 entitiesReferenced = 0;
   std::vector<uint32> texturesReferenced;
-  std::vector<VkBuffer> uniformBuffers;
-  std::vector<void*> dynamicUniformMapped;
-  std::vector<VkDeviceMemory> uniformBufferMemory;
+  std::vector<vkdev::Buffer> dynamicUniform;
   UniformBlocks* dynamicUniformData;
 };
 
@@ -111,14 +114,6 @@ struct InternalTexture {
 
 /*****************************************************/
 
-
-struct SceneUniformBuffer {
-  glm::mat4 view;
-  glm::mat4 projection;
-};
-
-
-
 struct PipelineSettings {
   VkPipelineLayout pipeline;
   VkDescriptorSetLayout descriptor;
@@ -126,13 +121,9 @@ struct PipelineSettings {
 
 struct Resources {
   std::vector<InternalVertexData> vertex_data;
-  VkBuffer bufferObject;
-  VkDeviceMemory vertexBufferMemory;
-  VkBuffer bufferIndices;
-  VkDeviceMemory indexBufferMemory;
-  std::vector<void*> staticUniformMapped;
-  std::vector<VkBuffer> sceneUniformBuffers;
-  std::vector<VkDeviceMemory> sceneUniformBufferMemory;
+  vkdev::Buffer vertexBuffer;
+  vkdev::Buffer indicesBuffer;
+  std::vector<vkdev::Buffer> staticUniform;
   std::array<PipelineSettings, kLayoutType_MAX> layouts;
   std::array<InternalMaterial, kMaterialType_MAX> internalMaterials;
   std::vector<InternalTexture> internalTextures;

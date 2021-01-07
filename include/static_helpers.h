@@ -11,18 +11,11 @@ struct Context;
 struct InternalMaterial;
 struct InternalTexture;
 class Texture;
-enum LayoutType;
 class StaticHelpers {
 public:
   static QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR& surface);
 
   static uint32 findMemoryType(VkPhysicalDevice device, uint32 typeFilter, VkMemoryPropertyFlags properties);
-
-  static void createInternalBuffer(Context context, VkDeviceSize size, VkBufferUsageFlags usage,
-                                   VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-
-  static void copyBuffer(Context context, VkBuffer srcBuffer, VkBuffer dstBuffer, 
-                         VkDeviceSize bufferSize, VkDeviceSize dstOffset = 0);
 
   static uint64_t padUniformBufferOffset(Context* context, size_t size);
 
