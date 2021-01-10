@@ -6,6 +6,7 @@
 #include "Components/geometry.h"
 #include "material.h"
 #include "Components/texture.h"
+#include "Components/point_light.h"
 
 #define DIMENSIONS 10
 const uint32 k_entitiesNumber = DIMENSIONS * DIMENSIONS;
@@ -13,80 +14,69 @@ const uint32 k_entitiesNumber = DIMENSIONS * DIMENSIONS;
 
 float accumTime;
 //Entity massiveTest[k_entitiesNumber];
-Entity colorTest;
+Entity testEntity;
+Entity lightTestEntity;
+
+Entity crate;
 
 void UserMain::init()
 {
   accumTime = 0.0f;
   ResourceManager* rm = ResourceManager::Get();
 
-  //uint32 offset = 3.0f;
-  //for (size_t i = 0; i < DIMENSIONS; i++) {
-  //  for (size_t j = 0; j < DIMENSIONS; j++) {
-  //    uint32 index = i * DIMENSIONS + j;
+  Transform* tr = new Transform();
+  tr->setPosition(0.0f, 0.0f, -4.0f);
+  Geometry* geo = new Geometry();
+  geo->initWithPrimitive(kPrimitiveType_Sphere);
 
-  //    Transform* newTR = new Transform();
-  //    newTR->setPosition(j * offset, i * offset, -5.0f);
-  //    Geometry* newGeo = new Geometry();
-  //    newGeo->initWithPrimitive(kPrimitiveType_Sphere);
+  Material pbrTest;
+  pbrTest.setMaterialType(kMaterialType_BasicPBR);
+  pbrTest.setMaterialColor({ 1.0f, 0.7655f, 0.3360f });
+  //pbrTest.setMaterialColor({ 0.0f, 1.f, 0.0f });
+  pbrTest.setRoughness(0.5f);
+  pbrTest.setMetallic(1.0f);
+  rm->createMaterial(&pbrTest);
 
-  //    massiveTest[index].addComponent(newTR);
-  //    massiveTest[index].addComponent(newGeo);
+  testEntity.addComponent(tr);
+  testEntity.addComponent(geo);
+  testEntity.setMaterial(&pbrTest);
 
-  //    rm->createEntity(&massiveTest[index]);
-  //  }
-  //}
-
-  Texture tex;
-  tex.loadTexture("./../../data/textures/rock_texture.jpg");
-  rm->createTexture(&tex);
-
-  
-  Transform* colorTr = new Transform();
-  colorTr->setPosition(-3.0f, 2.0f, -2.0f);
-  Geometry* colorGeo = new Geometry();
-  colorGeo->initWithPrimitive(kPrimitiveType_Sphere);
-  Material color_mat;
-  color_mat.setMaterialType(kMaterialType_TextureSampler);
-  //glm::vec3 color1 = { 0.4f, 0.7f, 0.0f };
-  //color_mat.setMaterialColor(color1);
-  color_mat.setMaterialTexture(tex);
-  rm->createMaterial(&color_mat);
-  colorTest.addComponent(colorTr);
-  colorTest.addComponent(colorGeo);
-  colorTest.setMaterial(&color_mat);
-
-  rm->createEntity(&colorTest);
+  rm->createEntity(&testEntity);
 
 
-  Texture tex2;
-  tex2.loadTexture("./../../data/textures/wave.jpg");
-  rm->createTexture(&tex2);
+  Transform* lightTr = new Transform();
+  lightTr->setPosition(0.0f, -2.0f, -4.0f);
+  PointLight* pLight = new PointLight();
 
-  Entity textureTest;
-  Transform* quad_tr = new Transform();
-  quad_tr->setPosition(0.0f, 0.0f, -2.0f);
-  quad_tr->setScale(2.0f, 1.0f, 1.0f);
-  Geometry* quad_geometry = new Geometry();
-  quad_geometry->initWithPrimitive(kPrimitiveType_Quad);
+  lightTestEntity.addComponent(lightTr);
+  lightTestEntity.addComponent(pLight);
+  rm->createEntity(&lightTestEntity);
 
 
-  Material texture_mat;
-  texture_mat.setMaterialType(kMaterialType_TextureSampler);
-  texture_mat.setMaterialTexture(tex2);
-  rm->createMaterial(&texture_mat);
-  textureTest.setMaterial(&texture_mat);
-  textureTest.addComponent(quad_tr);
-  textureTest.addComponent(quad_geometry);
+  Texture crate_tex;
+  crate_tex.loadTexture("./../../data/textures/crate.png");
+  rm->createTexture(&crate_tex);
 
-  rm->createEntity(&textureTest);
+  Transform* crate_tr = new Transform();
+  crate_tr->setPosition(1.0f, 0.0f, -0.5f);
+  Geometry* crate_geo = new Geometry();
+  crate_geo->initWithPrimitive(kPrimitiveType_Cube);
+
+  Material crate_material;
+  crate_material.setMaterialType(kMaterialType_TextureSampler);
+  crate_material.setMaterialTexture(crate_tex);
+  rm->createMaterial(&crate_material);
+  crate.addComponent(crate_geo);
+  crate.addComponent(crate_tr);
+  crate.setMaterial(&crate_material);
+
+  rm->createEntity(&crate);
 }
 
 void UserMain::run(float delta_time)
 {
-  Transform* colortr = colorTest.getComponent<Transform>(kComponentType_Transform);
-  colortr->rotateY(accumTime);
-  colortr->rotateX(accumTime);
+  Transform* tr = testEntity.getComponent<Transform>(kComponentType_Transform);
+  tr->rotateX(accumTime);
   accumTime += delta_time;
 }
 

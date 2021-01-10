@@ -7,7 +7,8 @@
 enum MaterialType {
   kMaterialType_NONE = -1,
   kMaterialType_UnlitColor = 0,
-  kMaterialType_TextureSampler = 1,
+  kMaterialType_BasicPBR = 1,
+  kMaterialType_TextureSampler,
   kMaterialType_MAX,
 };
 
@@ -25,6 +26,8 @@ public:
   void setMaterialType(MaterialType type);
   int32 setMaterialColor(glm::vec3 color);
   int32 setMaterialTexture(Texture texture);
+  int32 setRoughness(float);
+  int32 setMetallic(float);
 
   UniformBlocks& getMaterialSettings();
 

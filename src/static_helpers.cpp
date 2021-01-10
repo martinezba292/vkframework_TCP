@@ -56,49 +56,33 @@ uint32 StaticHelpers::findMemoryType(VkPhysicalDevice device, uint32 typeFilter,
 
 /***************************************************************************************************/
 
-//void StaticHelpers::createInternalBuffer(Context context, VkDeviceSize size, VkBufferUsageFlags usage, 
-//                                         VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
-//{
-//  VkBufferCreateInfo bufferInfo{};
-//  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-//  bufferInfo.size = size;
-//  bufferInfo.usage = usage;
-//  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-//
-//  //assert(vkCreateBuffer(context.logDevice_, &bufferInfo, nullptr, &buffer) == VK_SUCCESS);
-//  vkCreateBuffer(context.logDevice_, &bufferInfo, nullptr, &buffer);
-//
-//  VkMemoryRequirements memRequirements;
-//  vkGetBufferMemoryRequirements(context.logDevice_, buffer, &memRequirements);
-//
-//  VkMemoryAllocateInfo allocInfo{};
-//  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-//  allocInfo.allocationSize = memRequirements.size;
-//  allocInfo.memoryTypeIndex = findMemoryType(context.physDevice_,
-//    memRequirements.memoryTypeBits,
-//    properties);
-//
-//  //assert(vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory) == VK_SUCCESS);
-//  vkAllocateMemory(context.logDevice_, &allocInfo, nullptr, &bufferMemory);
-//
-//  vkBindBufferMemory(context.logDevice_, buffer, bufferMemory, 0);
-//}
-//
-///***************************************************************************************************/
-//
-//void StaticHelpers::copyBuffer(Context context, VkBuffer srcBuffer, VkBuffer dstBuffer, 
-//                               VkDeviceSize bufferSize, VkDeviceSize dstOffset /*= 0*/)
-//{
-//  VkCommandBuffer commandBuffer = beginSingleTimeCommands(&context);
-//
-//  VkBufferCopy copyRegion{};
-//  copyRegion.srcOffset = 0;
-//  copyRegion.dstOffset = dstOffset;
-//  copyRegion.size = bufferSize;
-//  vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-//
-//  endSingleTimeCommands(&context, commandBuffer);
-//}
+VkFormat StaticHelpers::findSupportedFormats(Context* context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+  for (VkFormat format : candidates) {
+    VkFormatProperties properties;
+    vkGetPhysicalDeviceFormatProperties(context->physDevice_, format, &properties);
+
+    if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features) {
+      return format;
+    }
+    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+
+  throw std::runtime_error("Failed to find supported format");
+
+}
+
+/***************************************************************************************************/
+
+VkFormat StaticHelpers::findDepthFormat(Context* context)
+{
+  return findSupportedFormats(context,
+    { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+    VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+  );
+}
 
 /***************************************************************************************************/
 
@@ -115,6 +99,8 @@ uint64_t StaticHelpers::padUniformBufferOffset(Context* context, size_t size)
 
   return offset;
 }
+
+/***************************************************************************************************/
 
 std::vector<char> StaticHelpers::loadShader(const std::string& filename)
 {
@@ -135,6 +121,8 @@ std::vector<char> StaticHelpers::loadShader(const std::string& filename)
   return buffer;
 }
 
+/***************************************************************************************************/
+
 VkShaderModule StaticHelpers::createShaderModule(const VkDevice device, const std::vector<char>& code)
 {
   VkShaderModuleCreateInfo shader_module_info{};
@@ -148,6 +136,8 @@ VkShaderModule StaticHelpers::createShaderModule(const VkDevice device, const st
 
   return shader_module;
 }
+
+/***************************************************************************************************/
 
 SwapChainSupportDetails StaticHelpers::querySwapChain(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
@@ -170,6 +160,8 @@ SwapChainSupportDetails StaticHelpers::querySwapChain(VkPhysicalDevice device, V
 
   return details;
 }
+
+/***************************************************************************************************/
 
 VkPipeline StaticHelpers::createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout pipelineLayout)
 {
@@ -328,6 +320,8 @@ VkPipeline StaticHelpers::createPipeline(Context* context, const char* vert_path
   return new_pipeline;
 }
 
+/***************************************************************************************************/
+
 InternalTexture StaticHelpers::createTextureImage(Context* context, Texture texture)
 {
   int32 texWidth, texHeight, texChannels;
@@ -338,15 +332,9 @@ InternalTexture StaticHelpers::createTextureImage(Context* context, Texture text
   }
 
   VkDeviceSize imageSize = (uint64_t)(texWidth) * (uint64_t)(texHeight) * 4;
-  //VkBuffer staging_buffer;
-  //VkDeviceMemory staging_buffer_memory;
-  
   vkdev::Buffer staging_buffer;
   staging_buffer.createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  /*createInternalBuffer(*context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    staging_buffer, staging_buffer_memory);*/
 
   void* data;
   vkMapMemory(context->logDevice_, staging_buffer.memory_, 0, imageSize, 0, &data);
@@ -379,6 +367,8 @@ InternalTexture StaticHelpers::createTextureImage(Context* context, Texture text
   return texture_result;
 }
 
+/***************************************************************************************************/
+
 VkImageView StaticHelpers::createTextureImageView(Context* context, VkImage image, VkFormat format, VkImageAspectFlags flags)
 {
   Resources* res = ResourceManager::Get()->getResources();
@@ -399,6 +389,8 @@ VkImageView StaticHelpers::createTextureImageView(Context* context, VkImage imag
 
   return image_view_result;
 }
+
+/***************************************************************************************************/
 
 VkSampler StaticHelpers::createTextureSampler(Context* context)
 {
@@ -436,6 +428,8 @@ VkSampler StaticHelpers::createTextureSampler(Context* context)
 
   return sampler_result;
 }
+
+/***************************************************************************************************/
 
 void StaticHelpers::createImage(Context* context, uint32 width, uint32 height, 
                                 VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, 
@@ -478,6 +472,8 @@ void StaticHelpers::createImage(Context* context, uint32 width, uint32 height,
   vkBindImageMemory(context->logDevice_, image, image_memory, 0);
 }
 
+/***************************************************************************************************/
+
 VkCommandBuffer StaticHelpers::beginSingleTimeCommands(Context* context)
 {
   VkCommandBufferAllocateInfo allocInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
@@ -496,6 +492,8 @@ VkCommandBuffer StaticHelpers::beginSingleTimeCommands(Context* context)
   return cmd_buffer;
 }
 
+/***************************************************************************************************/
+
 void StaticHelpers::endSingleTimeCommands(Context* context, VkCommandBuffer command_buffer)
 {
   vkEndCommandBuffer(command_buffer);
@@ -509,6 +507,8 @@ void StaticHelpers::endSingleTimeCommands(Context* context, VkCommandBuffer comm
 
   vkFreeCommandBuffers(context->logDevice_, context->transferCommandPool, 1, &command_buffer);
 }
+
+/***************************************************************************************************/
 
 void StaticHelpers::transitionImageLayout(Context* context, VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout)
 {
@@ -554,6 +554,8 @@ void StaticHelpers::transitionImageLayout(Context* context, VkImage image, VkFor
   endSingleTimeCommands(context, cmd_buffer);
 }
 
+/***************************************************************************************************/
+
 void StaticHelpers::copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height)
 {
   VkCommandBuffer cmd_buffer = beginSingleTimeCommands(context);
@@ -576,6 +578,8 @@ void StaticHelpers::copyBufferToImage(Context* context, VkBuffer buffer, VkImage
   endSingleTimeCommands(context, cmd_buffer);
 }
 
+/***************************************************************************************************/
+
 void StaticHelpers::destroyMaterial(Context* context, InternalMaterial* material)
 {
   vkDestroyPipeline(context->logDevice_, material->matPipeline, nullptr);
@@ -585,32 +589,7 @@ void StaticHelpers::destroyMaterial(Context* context, InternalMaterial* material
 
   vkDestroyDescriptorPool(context->logDevice_, material->matDesciptorPool, nullptr);
   _aligned_free(material->dynamicUniformData);
-
 }
 
-VkFormat StaticHelpers::findSupportedFormats(Context* context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-  for (VkFormat format : candidates) {
-    VkFormatProperties properties;
-    vkGetPhysicalDeviceFormatProperties(context->physDevice_, format, &properties);
 
-    if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features) {
-      return format;
-    }
-    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features) {
-      return format;
-    }
-  }
-
-  throw std::runtime_error("Failed to find supported format");
-
-}
-
-VkFormat StaticHelpers::findDepthFormat(Context* context)
-{
-  return findSupportedFormats(context,
-    { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-    VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-  );
-}
 

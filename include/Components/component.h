@@ -7,6 +7,7 @@ enum ComponentType : uint8 {
   kComponentType_NONE = 0,
   kComponentType_Transform = 1,
   kComponentType_Geometry = 2,
+  kComponentType_Light,
   kComponentType_MAX
 };
 

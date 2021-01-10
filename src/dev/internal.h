@@ -14,6 +14,7 @@ const uint32 kMaxInstance = 10;
 const uint32 kMaxMaterial = 10;
 const uint32 kMaxTexture = 20;
 const uint32 kTexturePerShader = 10;
+const uint32 kMaxLights = 4;
 
 struct Scene {
   static Camera camera;
@@ -76,14 +77,32 @@ struct TextureUniform {
   glm::vec3 padding;
 };
 
+struct BPBRUniform {
+  glm::mat4 model;
+  glm::vec4 color;
+  float roughness;
+  float metallic;
+  glm::vec2 padding;
+};
+
 union UniformBlocks {
   UnlitUniform unlitBlock;
   TextureUniform textureBlock;
+  BPBRUniform pbrBlock;
+};
+
+struct LightParams {
+  glm::vec3 lightPosition;
 };
 
 struct SceneUniformBuffer {
   glm::mat4 view;
   glm::mat4 projection;
+  //LightParams lights[kMaxLights];
+  glm::vec4 lights[kMaxLights];
+  //std::array<LightParams, kMaxLights> lights;
+  glm::vec4 cameraPosition;
+  uint32 lightNumber;
 };
 
 enum LayoutType {
@@ -118,6 +137,9 @@ struct PipelineSettings {
   VkPipelineLayout pipeline;
   VkDescriptorSetLayout descriptor;
 };
+
+
+
 
 struct Resources {
   std::vector<InternalVertexData> vertex_data;

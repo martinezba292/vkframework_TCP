@@ -1,10 +1,15 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-//layout(location = 0) in vec3 outNormal;
-//layout(location = 1) in vec2 outUv;
+#include "glsl_common.h"
 
-//layout(binding = 2) uniform sampler2D texSampler;
+layout(binding = 0) uniform SceneUniformBuffer {
+    mat4 view;
+    mat4 proj;
+    vec3 camPos;
+    LightParams params[NLIGHTS];
+    int light_number;
+} sb;
 
 layout(location = 0) in vec4 outColor;
 

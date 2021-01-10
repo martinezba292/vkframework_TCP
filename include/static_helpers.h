@@ -17,6 +17,10 @@ public:
 
   static uint32 findMemoryType(VkPhysicalDevice device, uint32 typeFilter, VkMemoryPropertyFlags properties);
 
+  static VkFormat findSupportedFormats(Context* context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+
+  static VkFormat findDepthFormat(Context* context);
+
   static uint64_t padUniformBufferOffset(Context* context, size_t size);
 
   static std::vector<char> loadShader(const std::string& filename);
@@ -47,9 +51,6 @@ public:
 
   static void destroyMaterial(Context* context, InternalMaterial* material);
 
-  static VkFormat findSupportedFormats(Context* context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-
-  static VkFormat findDepthFormat(Context* context);
 };
 
 

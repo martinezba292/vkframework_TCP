@@ -13,6 +13,7 @@
 #include "camera.h"
 #include "entity.h"
 #include "material.h"
+#include "Components/point_light.h"
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 
@@ -421,6 +422,12 @@ void VulkanApp::createInternalMaterials()
                                                         "./../../src/shaders/unlit_color_frag.spv",
                                                         res->layouts[kLayoutType_Simple_2Binds].pipeline);
 
+  material = &res->internalMaterials[kMaterialType_BasicPBR];
+  material->layout = kLayoutType_Simple_2Binds;
+  material->matPipeline = StaticHelpers::createPipeline(context_, "./../../src/shaders/basic_pbr_vert.spv",
+                                                        "./../../src/shaders/basic_pbr_frag.spv",
+                                                        res->layouts[kLayoutType_Simple_2Binds].pipeline);
+
   material = &res->internalMaterials[kMaterialType_TextureSampler];
   material->layout = kLayoutType_Texture_3Binds;
   material->matPipeline = StaticHelpers::createPipeline(context_, "./../../src/shaders/texture_sampling_vert.spv",
@@ -586,30 +593,20 @@ void VulkanApp::createVertexBuffers()
   }
   mainResources->vertexBuffer.createBuffer(context_, total_vertex_bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  /*StaticHelpers::createInternalBuffer(*context_, total_vertex_bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mainResources->bufferObject, mainResources->vertexBufferMemory);*/
-
   for (size_t i = 0; i < geometry_number; i++) {
     InternalVertexData* vertexData = &mainResources->vertex_data[i];
 
     VkDeviceSize size = sizes[i];
     vkdev::Buffer staging_buffer;
-    //VkBuffer stagingBuffer;
-    //VkDeviceMemory stagingBufferMemory;
     staging_buffer.createBuffer(context_, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    /*StaticHelpers::createInternalBuffer(*context_, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);*/
 
     void* data;
     vkMapMemory(context_->logDevice_, staging_buffer.memory_, 0, size, 0, &data);
     memcpy(data, vertexData->vertex.data(), size);
     vkUnmapMemory(context_->logDevice_, staging_buffer.memory_);
 
-    //StaticHelpers::copyBuffer(*context_, stagingBuffer, mainResources->bufferObject, size, offset_bytes[i]);
     mainResources->vertexBuffer.copyBuffer(context_, staging_buffer, size, offset_bytes[i]);
-    /*vkDestroyBuffer(context_->logDevice_, stagingBuffer, nullptr);
-    vkFreeMemory(context_->logDevice_, stagingBufferMemory, nullptr);*/
     staging_buffer.destroyBuffer();
   }
 }
@@ -632,8 +629,6 @@ void VulkanApp::createIndexBuffers()
     offset_bytes[i] = total_index_bytes;
     total_index_bytes += sizes[i];
   }
-  /*StaticHelpers::createInternalBuffer(*context_, total_index_bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mainResources->bufferIndices, mainResources->indexBufferMemory);*/
   mainResources->indicesBuffer.createBuffer(context_, total_index_bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -641,24 +636,17 @@ void VulkanApp::createIndexBuffers()
     InternalVertexData* vertexData = &mainResources->vertex_data[i];
 
     VkDeviceSize size = sizes[i];
-    /*VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;*/
     vkdev::Buffer staging_buffer;
     staging_buffer.createBuffer(context_, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    /*StaticHelpers::createInternalBuffer(*context_, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);*/
 
     void* data;
     vkMapMemory(context_->logDevice_, staging_buffer.memory_, 0, size, 0, &data);
     memcpy(data, vertexData->indices.data(), size);
     vkUnmapMemory(context_->logDevice_, staging_buffer.memory_);
 
-    //StaticHelpers::copyBuffer(*context_, stagingBuffer, mainResources->bufferIndices, size, offset_bytes[i]);
     mainResources->indicesBuffer.copyBuffer(context_, staging_buffer, size, offset_bytes[i]);
     staging_buffer.destroyBuffer();
-    //vkDestroyBuffer(context_->logDevice_, stagingBuffer, nullptr);
-    //vkFreeMemory(context_->logDevice_, stagingBufferMemory, nullptr);
   }
 }
 
@@ -672,13 +660,13 @@ void VulkanApp::createDescriptorSetLayout()
   layoutBinding[0].binding = 0;
   layoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   layoutBinding[0].descriptorCount = 1;
-  layoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  layoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   layoutBinding[0].pImmutableSamplers = nullptr;
 
   layoutBinding[1].binding = 1;
   layoutBinding[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
   layoutBinding[1].descriptorCount = 1;
-  layoutBinding[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  layoutBinding[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
   layoutBinding[1].pImmutableSamplers = nullptr;
 
 
@@ -850,33 +838,20 @@ void VulkanApp::createUniformBuffers()
   uint32 swapChainImageCount = context_->swapchainImageViews.size();
   for (size_t j = 0; j < kMaterialType_MAX; j++) {
     InternalMaterial* mat = &resources->internalMaterials[j];
-    //mat->dynamicUniformMapped.resize(swapChainImageCount);
     mat->dynamicUniform.resize(swapChainImageCount);
     if (mat->entitiesReferenced) {
     VkDeviceSize dynamicBufferSize = dynamicAlignment * mat->entitiesReferenced;
-    //mat->uniformBuffers.resize(swapChainImageCount);
-    //mat->uniformBufferMemory.resize(swapChainImageCount);
       mat->dynamicUniformData = (UniformBlocks*)_aligned_malloc(dynamicBufferSize, dynamicAlignment);
       for (size_t i = 0; i < swapChainImageCount; i++) {
         mat->dynamicUniform[i].createBuffer(context_, dynamicBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        /*StaticHelpers::createInternalBuffer(*context_, dynamicBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, mat->dynamicBuffer[i].buffer_, mat->dynamicBuffer[i].memory_);*/
-
         vkMapMemory(context_->logDevice_, mat->dynamicUniform[i].memory_, 0, dynamicBufferSize, 0, &mat->dynamicUniform[i].mapped_);
       }
     }
   }
 
-  //resources->sceneUniformBuffers.resize(swapChainImageCount);
-  //resources->staticUniformMapped.resize(swapChainImageCount);
-  //resources->sceneUniformBufferMemory.resize(swapChainImageCount);
   resources->staticUniform.resize(swapChainImageCount);
   for (size_t i = 0; i < swapChainImageCount; i++) {
-    /*StaticHelpers::createInternalBuffer(*context_, sizeof(SceneUniformBuffer), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                        resources->sceneUniformBuffers[i], resources->sceneUniformBufferMemory[i]);*/
-
     resources->staticUniform[i].createBuffer(context_, sizeof(SceneUniformBuffer), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -890,30 +865,45 @@ void VulkanApp::updateUniformBuffers(uint32 index)
 {
   Resources* resources = ResourceManager::Get()->getResources();
 
-  SceneUniformBuffer sceneBuffer{ Scene::camera.getView(), Scene::camera.getProjection() };
-  memcpy(resources->staticUniform[index].mapped_, &sceneBuffer, sizeof(SceneUniformBuffer));
+  SceneUniformBuffer sceneBuffer{};
+  sceneBuffer.view = Scene::camera.getView();
+  sceneBuffer.projection = Scene::camera.getProjection();
+  sceneBuffer.cameraPosition = { Scene::camera.getPosition(), 0.0f };
+  //sceneBuffer.cameraPosition *= -1.0f;
+  sceneBuffer.lightNumber = 0;
+  int32 s = sizeof(SceneUniformBuffer);
   //VkMappedMemoryRange memoryRange{ VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
   //memoryRange.memory = resources->staticUniform[index].memory_;
   //memoryRange.size = sizeof(SceneUniformBuffer);
   //vkFlushMappedMemoryRanges(context_->logDevice_, 1, &memoryRange);
 
-  for (auto& entity : Scene::sceneEntities) {
+  for (size_t i = 0; i < Scene::entitiesCount; i++) {
+    Entity* entity = &Scene::sceneEntities[i];
     UniformBlocks u_blocks{};
-    Material* mat = entity.getMaterial();
-    if (mat) {
-      u_blocks = mat->getMaterialSettings();
-      u_blocks.unlitBlock.model = glm::mat4(1.0f);
-      Transform* tr = entity.getComponent<Transform>(kComponentType_Transform);
-      if (tr) u_blocks.unlitBlock.model = tr->getModel();
-      int32 offset = entity.getMaterialOffset();
-      UniformBlocks* buffer = (UniformBlocks*)((uint64_t)resources->internalMaterials[mat->getMaterialType()].dynamicUniformData + 
-                                                (offset * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks))));
-      *buffer = u_blocks;
+    Material* mat = entity->getMaterial();
+    Transform* tr = entity->getComponent<Transform>(kComponentType_Transform);
+    if (tr) {
+      PointLight* light = entity->getComponent<PointLight>(kComponentType_Light);
+      if (light) {
+        glm::vec4 pos = { tr->getPosition(), 0.0f };
+        sceneBuffer.lights[sceneBuffer.lightNumber] = pos;
+        ++sceneBuffer.lightNumber;
+      }
+      if (mat) {
+        u_blocks = mat->getMaterialSettings();
+        u_blocks.unlitBlock.model = glm::mat4(1.0f);
+        u_blocks.unlitBlock.model = tr->getModel();
+        int32 offset = entity->getMaterialOffset();
+        UniformBlocks* buffer = (UniformBlocks*)((uint64_t)resources->internalMaterials[mat->getMaterialType()].dynamicUniformData +
+          (offset * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks))));
+        *buffer = u_blocks;
+      }
     }
   }
 
+  memcpy(resources->staticUniform[index].mapped_, &sceneBuffer, sizeof(SceneUniformBuffer));
+
   for (auto& internal_material : resources->internalMaterials) {
-    //if (internal_material.entitiesReferenced) { ///////////////////////////////////////// TODO
       uint64_t sceneUboSize = internal_material.entitiesReferenced * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
       memcpy(internal_material.dynamicUniform[index].mapped_, internal_material.dynamicUniformData, sceneUboSize);
       //memoryRange.memory = internal_material.uniformBufferMemory[index];
@@ -1047,7 +1037,7 @@ void VulkanApp::render(uint32 index)
   vkBeginCommandBuffer(cmd_buffer, &begin_info);
   
   std::array<VkClearValue, 2> clearColor{};
-  clearColor[0].color = { 0.1f, 0.3f, 0.8f, 1.0f };
+  clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
   clearColor[1].depthStencil = { 1.0f, 0 };
 
   VkRenderPassBeginInfo rp_begin{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
@@ -1064,11 +1054,12 @@ void VulkanApp::render(uint32 index)
 
   VkBuffer vertexBuffers[] = { intResources->vertexBuffer.buffer_ };
   VkDeviceSize offsets[] = { 0 };
-  for (auto& entity : Scene::sceneEntities) {
-    Material* mat = entity.getMaterial();
+  for (size_t i = 0; i < Scene::entitiesCount; i++) {
+    Entity* entity = &Scene::sceneEntities[i];
+    Material* mat = entity->getMaterial();
     if (mat) {
       int32 matType = mat->getMaterialType();
-      uint32 uniform_offset = entity.getMaterialOffset() * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
+      uint32 uniform_offset = entity->getMaterialOffset() * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
       InternalMaterial* internalMat = &intResources->internalMaterials[matType];
 
       vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internalMat->matPipeline);
@@ -1078,7 +1069,7 @@ void VulkanApp::render(uint32 index)
                               intResources->layouts[internalMat->layout].pipeline, 0, 1,
                               &internalMat->matDescriptorSet[index], 1, &uniform_offset);
 
-      Geometry* geo = entity.getComponent<Geometry>(kComponentType_Geometry);
+      Geometry* geo = entity->getComponent<Geometry>(kComponentType_Geometry);
       if (geo && geo->getId() >= 0) {
         InternalVertexData vertex_data = intResources->vertex_data[geo->getId()];
         uint32 first_vertex = vertex_data.offset;
@@ -1271,10 +1262,6 @@ void VulkanApp::end()
   //Vertex Buffers
   intResources->vertexBuffer.destroyBuffer();
   intResources->indicesBuffer.destroyBuffer();
-  //vkDestroyBuffer(context_->logDevice_, intResources->bufferIndices, nullptr);
-  //vkFreeMemory(context_->logDevice_, intResources->indexBufferMemory, nullptr);
-  //vkDestroyBuffer(context_->logDevice_, intResources->bufferObject, nullptr);
-  //vkFreeMemory(context_->logDevice_, intResources->vertexBufferMemory, nullptr);
   
 
   vkDestroySurfaceKHR(context_->instance_, context_->surface, nullptr);

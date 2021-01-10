@@ -10,22 +10,26 @@ layout(location = 2) in vec2 inUv;
 layout(binding = 0) uniform SceneUniformBuffer {
     mat4 view;
     mat4 proj;
-    vec3 camPos;
-    LightParams params[NLIGHTS];
+    //LightParams params[NLIGHTS];
+    vec4 lights[4];
     int light_number;
+    vec3 camPos;
 } sb;
 
 layout(binding = 1) uniform UniformBufferObject {
     mat4 model;
-    int textureIndex;
-    vec3 padding;
+    vec4 color;
+    float roughness;
+    float metallic;
+    vec2 padding;
 } ubo;
 
-layout(location = 0) out vec2 outUv;
-layout(location = 1) out int outTIndex;
+layout(location = 0) out vec3 worldPosition;
+layout(location = 1) out vec3 worldNormal;
+
 
 void main() {
-    gl_Position = sb.proj * sb.view * ubo.model * vec4(inPosition, 1.0);
-    outUv = inUv;
-    outTIndex = ubo.textureIndex;
+    worldPosition = vec3(ubo.model * vec4(inPosition, 1.0));
+    worldNormal = mat3(ubo.model) * inNormal;
+    gl_Position = sb.proj * sb.view * vec4(worldPosition, 1.0);
 }

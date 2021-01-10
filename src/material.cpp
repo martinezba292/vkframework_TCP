@@ -42,7 +42,7 @@ void Material::setMaterialType(MaterialType type)
 
 int32 Material::setMaterialColor(glm::vec3 color)
 {
-  if (type_ != 0)
+  if (type_ >= kMaterialType_TextureSampler)
     throw std::runtime_error("Wrong material type");
 
   settings_->unlitBlock.color = glm::vec4(color, 1.0f);
@@ -67,6 +67,28 @@ int32 Material::setMaterialTexture(Texture texture)
   uint32 index = result - mat->texturesReferenced.begin();
   settings_->textureBlock.textureIndex = index;
 
+  return 0;
+}
+
+int32 Material::setRoughness(float rough)
+{
+  if (type_ != kMaterialType_BasicPBR) {
+    printf("Wrong material type");
+    return -1;
+  }
+
+  settings_->pbrBlock.roughness = rough;
+  return 0;
+}
+
+int32 Material::setMetallic(float metal)
+{
+  if (type_ != kMaterialType_BasicPBR) {
+    printf("Wrong material type");
+    return -1;
+  }
+
+  settings_->pbrBlock.metallic = metal;
   return 0;
 }
 

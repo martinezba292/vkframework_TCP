@@ -88,40 +88,40 @@ void ResourceManager::initPrimitiveGeometries()
   /******CUBE*******/
   Vertex cube[] = {
     ///FRONT
-    VertexBuffer::VertexInitializer({-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
-    VertexBuffer::VertexInitializer({-0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}),
+    {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+    {{ 0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+    {{ 0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
 
     ///REAR
-    VertexBuffer::VertexInitializer({-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
-    VertexBuffer::VertexInitializer({-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}),
+    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}},
+    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}},
+    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}},
+    {{-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}},
 
     ///RIGHT
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}),
+    {{ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+    {{ 0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
+    {{ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
 
     ///LEFT
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}),
+    {{ -0.5f, -0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{ -0.5f,  0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{ -0.5f,  0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}},
+    {{ -0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
 
     ///DOWN
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}),
+    {{ -0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{ -0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{  0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+    {{  0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
 
     ///UP
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({ -0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}),
-    VertexBuffer::VertexInitializer({  0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f})
+    {{ -0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{ -0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{  0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
+    {{  0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}}
   };
 
   uint32 cube_indices[] = { 0,  2,  1,  2,  0,  3,
@@ -201,16 +201,16 @@ void ResourceManager::initPrimitiveGeometries()
       if (i != 0)
       {
         sphere_indices.push_back(k1);
-        sphere_indices.push_back(k2);
         sphere_indices.push_back(k1 + 1);
+        sphere_indices.push_back(k2);
       }
 
       // k1+1 => k2 => k2+1
       if (i != (latitudeRev - 1))
       {
         sphere_indices.push_back(k1 + 1);
-        sphere_indices.push_back(k2);
         sphere_indices.push_back(k2 + 1);
+        sphere_indices.push_back(k2);
       }
     }
   }
