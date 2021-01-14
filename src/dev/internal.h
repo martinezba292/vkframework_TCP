@@ -4,30 +4,33 @@
 #include "glm/glm.hpp"
 #include <chrono>
 #include <array>
+#include "draw_cmd.h"
 #include "material.h"
+#include "vertex_buffer.h"
 #include "buffer.h"
+#include "dev/ptr_alloc.h"
+
 
 class Entity;
 class Camera;
 
-const uint32 kMaxInstance = 10;
-const uint32 kMaxMaterial = 10;
+const uint32 kMaxInstance = 200;
+const uint32 kMaxMaterial = 200;
 const uint32 kMaxTexture = 20;
 const uint32 kTexturePerShader = 10;
-const uint32 kMaxLights = 4;
+const uint32 kMaxLights = 25;
 
 struct Scene {
   static Camera camera;
-  static std::array<Entity, kMaxInstance> sceneEntities;
-  static std::array<Material, kMaxMaterial> sceneMaterials;
-  static std::array<Texture, kMaxTexture> userTextures;
+  static std::array<PtrAlloc<Entity>, kMaxInstance> sceneEntities;
+  static std::array<PtrAlloc<Material>, kMaxMaterial> sceneMaterials;
+  static std::array<PtrAlloc<Texture>, kMaxTexture> userTextures;
   static uint32 textureCount;
   static uint32 entitiesCount;
   static uint32 materialCount;
   static std::chrono::steady_clock::time_point lastTime;
 };
 
-struct Vertex;
 struct InternalVertexData {
   std::vector<Vertex> vertex;
   std::vector<uint32> indices;
@@ -79,7 +82,7 @@ struct TextureUniform {
 
 struct BPBRUniform {
   glm::mat4 model;
-  glm::vec4 color;
+  glm::vec4 albedo;
   float roughness;
   float metallic;
   glm::vec2 padding;
@@ -92,17 +95,22 @@ union UniformBlocks {
 };
 
 struct LightParams {
-  glm::vec3 lightPosition;
+  glm::vec4 lightPosition;
+  glm::vec4 lilghtColor;
 };
 
 struct SceneUniformBuffer {
   glm::mat4 view;
   glm::mat4 projection;
-  //LightParams lights[kMaxLights];
-  glm::vec4 lights[kMaxLights];
-  //std::array<LightParams, kMaxLights> lights;
-  glm::vec4 cameraPosition;
+  std::array<LightParams, kMaxLights> lights;
+  glm::vec3 cameraPosition;
   uint32 lightNumber;
+};
+
+struct ComponentUpdateData {
+  SceneUniformBuffer sceneBuffer;
+  UniformBlocks objectBuffer;
+  DrawCallData drawCall;
 };
 
 enum LayoutType {
@@ -138,17 +146,15 @@ struct PipelineSettings {
   VkDescriptorSetLayout descriptor;
 };
 
-
-
-
 struct Resources {
   std::vector<InternalVertexData> vertex_data;
   vkdev::Buffer vertexBuffer;
   vkdev::Buffer indicesBuffer;
   std::vector<vkdev::Buffer> staticUniform;
   std::array<PipelineSettings, kLayoutType_MAX> layouts;
-  std::array<InternalMaterial, kMaterialType_MAX> internalMaterials;
+  std::array<InternalMaterial, (int32)MaterialType::kMaterialType_MAX> internalMaterials;
   std::vector<InternalTexture> internalTextures;
+  std::vector<DrawCallData> draw_calls;
 };
 
 
@@ -158,7 +164,7 @@ struct SwapchainDimension {
   uint32 width = 0;
   uint32 height = 0;
   VkFormat format = VK_FORMAT_UNDEFINED;
-  float aspect;
+  float aspect = 0.0f;
 };
 
 struct FrameData {

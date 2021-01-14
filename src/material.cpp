@@ -1,13 +1,13 @@
 #include "material.h"
 #include <stdexcept>
 #include "Components/texture.h"
-#include "internal.h"
+#include "dev/internal.h"
 #include "resource_manager.h"
 
 Material::Material()
 {
   materialId_ = -1;
-  type_ = kMaterialType_NONE;
+  type_ = MaterialType::kMaterialType_NONE;
   settings_ = new UniformBlocks();
 }
 
@@ -20,6 +20,7 @@ Material::Material(const Material& other)
 
 Material::~Material()
 {
+  delete(settings_);
 }
 
 int32 Material::getMaterialId()
@@ -29,12 +30,12 @@ int32 Material::getMaterialId()
 
 int32 Material::getMaterialType()
 {
-  return type_;
+  return (int32)type_;
 }
 
 void Material::setMaterialType(MaterialType type)
 {
-  if (type_ >= 0) 
+  if ((int32)type_ >= 0) 
     throw std::runtime_error("Already initialized");
 
   type_ = type;
@@ -42,22 +43,22 @@ void Material::setMaterialType(MaterialType type)
 
 int32 Material::setMaterialColor(glm::vec3 color)
 {
-  if (type_ >= kMaterialType_TextureSampler)
+  if (type_ >= MaterialType::kMaterialType_TextureSampler)
     throw std::runtime_error("Wrong material type");
 
   settings_->unlitBlock.color = glm::vec4(color, 1.0f);
   return 0;
 }
 
-int32 Material::setMaterialTexture(Texture texture)
+int32 Material::setMaterialTexture(Texture& texture)
 {
   if (texture.getId() < 0)
     throw std::runtime_error("Texture hasn't been created yet");
 
-  if (type_ < kMaterialType_TextureSampler)
+  if (type_ < MaterialType::kMaterialType_TextureSampler)
     throw std::runtime_error("Wrong material type");
 
-  InternalMaterial* mat = &ResourceManager::Get()->getResources()->internalMaterials[type_];
+  InternalMaterial* mat = &ResourceManager::Get()->getResources()->internalMaterials[(int32)type_];
   auto result = std::find(mat->texturesReferenced.begin(), mat->texturesReferenced.end(), texture.getId());
   if (result == mat->texturesReferenced.end()) {
     settings_->textureBlock.textureIndex = mat->texturesReferenced.size();
@@ -72,7 +73,7 @@ int32 Material::setMaterialTexture(Texture texture)
 
 int32 Material::setRoughness(float rough)
 {
-  if (type_ != kMaterialType_BasicPBR) {
+  if (type_ != MaterialType::kMaterialType_BasicPBR) {
     printf("Wrong material type");
     return -1;
   }
@@ -83,7 +84,7 @@ int32 Material::setRoughness(float rough)
 
 int32 Material::setMetallic(float metal)
 {
-  if (type_ != kMaterialType_BasicPBR) {
+  if (type_ != MaterialType::kMaterialType_BasicPBR) {
     printf("Wrong material type");
     return -1;
   }

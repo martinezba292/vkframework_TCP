@@ -1,6 +1,6 @@
 #include "resource_manager.h"
 #include "vertex_buffer.h"
-#include "internal.h"
+#include "dev/internal.h"
 #include <iterator>
 #include "entity.h"
 #include "Components/geometry.h"
@@ -8,35 +8,29 @@
 #include "camera.h"
 #include <array>
 #include "Components/texture.h"
+#include <algorithm>
+#include <cstring>
 
-Geometry PrimitiveGeometry::triangle;
-Geometry PrimitiveGeometry::quad;
-Geometry PrimitiveGeometry::cube;
-Geometry PrimitiveGeometry::sphere;
+struct PrimitiveGeometry {
+  PtrAlloc<Geometry> triangle;
+  PtrAlloc<Geometry> quad;
+  PtrAlloc<Geometry> cube;
+  PtrAlloc<Geometry> sphere;
+}Primitives;
 
 ResourceManager* ResourceManager::instance_ = nullptr;
 Camera Scene::camera;
 uint32 Scene::entitiesCount = 0;
-std::array<Entity, kMaxInstance> Scene::sceneEntities;
+std::array<PtrAlloc<Entity>, kMaxInstance> Scene::sceneEntities;
 uint32 Scene::materialCount = 0;
-std::array<Material, kMaxInstance> Scene::sceneMaterials;
+std::array<PtrAlloc<Material>, kMaxMaterial> Scene::sceneMaterials;
 uint32 Scene::textureCount = 0;
-std::array<Texture, kMaxTexture> Scene::userTextures;
+std::array<PtrAlloc<Texture>, kMaxTexture> Scene::userTextures;
 std::chrono::steady_clock::time_point Scene::lastTime;
-//std::vector<Entity> Scene::sceneEntities;
-//std::vector<Material> Scene::sceneMaterials;
 
 
 ResourceManager::~ResourceManager()
 {
-  for (auto& entity : Scene::sceneEntities) {
-    entity.removeComponents();
-  }
-
-  for (auto& materials : Scene::sceneMaterials) {
-    delete(materials.settings_);
-  }
-
   delete(resources_);
 }
 
@@ -66,8 +60,9 @@ void ResourceManager::initPrimitiveGeometries()
 
   uint32 triangle_indices[] = { 0, 1, 2 };
 
-  PrimitiveGeometry::triangle.loadGeometry(triangle, 3, triangle_indices, 3);
-  PrimitiveGeometry::triangle.create();
+  Primitives.triangle.alloc();
+  Primitives.triangle->loadGeometry(triangle, 3, triangle_indices, 3);
+  Primitives.triangle->create();
   
   /*****QUAD******/
   Vertex quad[] = {
@@ -81,8 +76,9 @@ void ResourceManager::initPrimitiveGeometries()
     0, 2, 1, 2, 0, 3
   };
 
-  PrimitiveGeometry::quad.loadGeometry(quad, 4, quad_indices, 6);
-  PrimitiveGeometry::quad.create();
+  Primitives.quad.alloc();
+  Primitives.quad->loadGeometry(quad, 4, quad_indices, 6);
+  Primitives.quad->create();
 
 
   /******CUBE*******/
@@ -131,10 +127,9 @@ void ResourceManager::initPrimitiveGeometries()
                             16, 17, 19, 19, 17, 18,
                             23, 21, 20, 21, 23, 22 };
 
-  PrimitiveGeometry::cube.loadGeometry(cube, 24, cube_indices, 36);
-  PrimitiveGeometry::cube.create();
-
-  
+  Primitives.cube.alloc();
+  Primitives.cube->loadGeometry(cube, 24, cube_indices, 36);
+  Primitives.cube->create();
 
   /*****SPHERE*****/
   float longitudeRev = 50.0f;
@@ -142,9 +137,7 @@ void ResourceManager::initPrimitiveGeometries()
   //if (longitudeRev <= 1.0f) return;
   //if (latitudeRev <= 1.0f) return;
 
-  float x, y, z, xy;                  // vertex position
-  float nx, ny, nz;										// vertex normal
-  float tx, ty;                       // vertex texCoord
+  float xy;   //amplitude
 
   float PI = 3.141596f;
 
@@ -191,8 +184,8 @@ void ResourceManager::initPrimitiveGeometries()
   int32 k1, k2;
   for (size_t i = 0; i < latitudeRev; ++i)
   {
-    k1 = i * (longitudeRev + 1);     // beginning of current stack
-    k2 = k1 + longitudeRev + 1;      // beginning of next stack
+    k1 = i *  ((uint32)(longitudeRev) + 1);     // beginning of current stack
+    k2 = k1 + (uint32)(longitudeRev) + 1;      // beginning of next stack
 
     for (size_t j = 0; j < longitudeRev; ++j, ++k1, ++k2)
     {
@@ -214,9 +207,10 @@ void ResourceManager::initPrimitiveGeometries()
       }
     }
   }
-
-  PrimitiveGeometry::sphere.loadGeometry(sphere.data(), sphere.size(), sphere_indices.data(), sphere_indices.size());
-  PrimitiveGeometry::sphere.create();
+  
+  Primitives.sphere.alloc();
+  Primitives.sphere->loadGeometry(sphere.data(), sphere.size(), sphere_indices.data(), sphere_indices.size());
+  Primitives.sphere->create();
 }
 
 
@@ -246,7 +240,7 @@ void ResourceManager::createEntity(Entity* new_entity)
   if (Scene::entitiesCount >= kMaxInstance) return;
 
   new_entity->id_ = Scene::entitiesCount;
-  Scene::sceneEntities[Scene::entitiesCount] = *new_entity;
+  Scene::sceneEntities[Scene::entitiesCount] = new_entity;
   ++Scene::entitiesCount;
 }
 
@@ -256,7 +250,7 @@ void ResourceManager::createMaterial(Material* material)
   if (Scene::materialCount >= kMaxMaterial) return;
 
   material->materialId_ = Scene::materialCount;
-  Scene::sceneMaterials[Scene::materialCount] = *material;
+  Scene::sceneMaterials[Scene::materialCount] = material,
   ++Scene::materialCount;
 }
 
@@ -266,7 +260,7 @@ void ResourceManager::createTexture(Texture* texture)
   if (Scene::textureCount >= kMaxTexture) return;
 
   texture->id_ = Scene::textureCount;
-  Scene::userTextures[Scene::textureCount] = *texture;
+  Scene::userTextures[Scene::textureCount] = texture;
   ++Scene::textureCount;
 }
 

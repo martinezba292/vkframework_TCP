@@ -1,6 +1,6 @@
 #include "input_manager.h"
 #include "GLFW/glfw3.h"
-#include "internal.h"
+#include "dev/internal.h"
 
 
 uint8 InputManager::inputState[kKeyCode_MAX];

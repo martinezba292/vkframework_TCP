@@ -1,7 +1,7 @@
 #include "entity.h"
 #include "material.h"
 #include "resource_manager.h"
-#include "internal.h"
+#include "dev/internal.h"
 #include <stdexcept>
 
 Entity::Entity()
@@ -14,12 +14,13 @@ Entity::Entity()
 Entity::Entity(const Entity& other)
 {
   id_ = other.id_;
+  material_ = other.material_;
   components_ = other.components_;
 }
 
 Entity::~Entity()
 {
-  //removeComponents();
+  components_.clear();
 }
 
 int32 Entity::getId()
@@ -28,11 +29,24 @@ int32 Entity::getId()
 }
 
 
+void Entity::updateComponents(ComponentUpdateData* buffer)
+{
+  Material* mat = getMaterial();
+  if (mat) {
+    buffer->objectBuffer = mat->getMaterialSettings();
+    buffer->drawCall.offset = getMaterialOffset();
+    buffer->drawCall.materialType = mat->getMaterialType();
+  }
+  for (auto& component : components_) {
+    component.second->update(buffer);
+  }
+}
+
 Material* Entity::getMaterial()
 {
   if (material_.id < 0) return nullptr;
 
-  return &Scene::sceneMaterials[material_.id];
+  return Scene::sceneMaterials[material_.id].get();
 }
 
 
@@ -48,7 +62,8 @@ uint32 Entity::addComponent(Component* new_component)
   if (itr != components_.end()) 
     return 1;
 
-  components_.insert(std::make_pair(new_component->getComponentType(), new_component));
+  PtrAlloc<Component> cmp = new_component;
+  components_.insert(std::make_pair(new_component->getComponentType(), cmp));
   return 0;
 }
 
@@ -65,14 +80,5 @@ int8 Entity::setMaterial(Material* material)
   ++mat->entitiesReferenced;
 
   return 0;
-}
-
-void Entity::removeComponents()
-{
-  for (auto& component : components_) {
-    delete(component.second);
-  }
-
-  components_.clear();
 }
 

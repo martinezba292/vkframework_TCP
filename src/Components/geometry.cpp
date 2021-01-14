@@ -1,9 +1,10 @@
 #include "Components/geometry.h"
 #include "resource_manager.h"
+#include "dev/internal.h"
 
 Geometry::Geometry()
 {
-  type_ = kComponentType_Geometry;
+  type_ = ComponentType::kComponentType_Geometry;
 }
 
 Geometry::Geometry(const Geometry& other)
@@ -29,8 +30,15 @@ void Geometry::create()
   id_ = geometry_buffer_.getId();
 }
 
+
+
+void Geometry::update(ComponentUpdateData* buffer)
+{
+  buffer->drawCall.geometry = id_;
+}
+
 void Geometry::initWithPrimitive(PrimitiveType type)
 {
-  id_ = type;
+  id_ = (int32)type;
 }
 

@@ -8,7 +8,6 @@ class Material;
 class Texture;
 class ResourceManager {
 public:
-  ResourceManager();
   ~ResourceManager();
   static ResourceManager* Get();
   Resources* getResources() const;
@@ -20,6 +19,7 @@ public:
   void createTexture(Texture*);
 
 private:
+  ResourceManager();
   Resources* resources_;
   static ResourceManager* instance_;
 };

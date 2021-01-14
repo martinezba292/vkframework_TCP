@@ -4,7 +4,7 @@
 #include "Components/component.h"
 #include "vertex_buffer.h"
 
-enum PrimitiveType {
+enum class PrimitiveType {
   kPrimitiveType_NONE = -1,
   kPrimitiveType_Triangle = 0,
   kPrimitiveType_Quad = 1,
@@ -12,29 +12,25 @@ enum PrimitiveType {
   kPrimitiveType_Sphere
 };
 
+struct ComponentUpdateData;
 class Geometry : public Component {
 public:
   Geometry();
-  ~Geometry(){};
-  Geometry(const Geometry&);
 
   void loadGeometry(Vertex* vertices, uint32 vertex_number, 
                     uint32* indices, uint32 index_number);
   void loadGeometry(VertexBuffer& buffer);
   void create();
-
+  void update(ComponentUpdateData*) override;
   void initWithPrimitive(PrimitiveType type);
 
+protected:
+  virtual ~Geometry(){};
+
 private:
+  Geometry(const Geometry&);
   VertexBuffer geometry_buffer_;
 
-};
-
-struct PrimitiveGeometry {
-  static Geometry triangle;
-  static Geometry quad;
-  static Geometry cube;
-  static Geometry sphere;
 };
 
 #endif // !__GEOMETRY_H__ 1

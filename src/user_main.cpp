@@ -7,53 +7,63 @@
 #include "material.h"
 #include "Components/texture.h"
 #include "Components/point_light.h"
+#include "dev/ptr_alloc.h"
 
 #define DIMENSIONS 10
+#define LIGHT_ROW 5
 const uint32 k_entitiesNumber = DIMENSIONS * DIMENSIONS;
 
 
 float accumTime;
-//Entity massiveTest[k_entitiesNumber];
-Entity testEntity;
-Entity lightTestEntity;
-
-Entity crate;
-
 void UserMain::init()
 {
   accumTime = 0.0f;
   ResourceManager* rm = ResourceManager::Get();
+  float offset = 3.0f;
 
-  Transform* tr = new Transform();
-  tr->setPosition(0.0f, 0.0f, -4.0f);
-  Geometry* geo = new Geometry();
-  geo->initWithPrimitive(kPrimitiveType_Sphere);
+  PtrAlloc<Entity> massiveTest[k_entitiesNumber];
+  PtrAlloc<Entity> lightTest[LIGHT_ROW * LIGHT_ROW];
+  PtrAlloc<Geometry> geo;
+  geo.alloc();
+  geo->initWithPrimitive(PrimitiveType::kPrimitiveType_Sphere);
+  for (size_t i = 0; i < DIMENSIONS; i++) {
+    for (size_t j = 0; j < DIMENSIONS; ++j) {
+      PtrAlloc<Transform> tr;
+      tr.alloc();
+      tr->setPosition(j * offset, i * offset, -3.0f);
+      PtrAlloc<Material> pbrTest;
+      pbrTest.alloc();
+      pbrTest->setMaterialColor({ 1.0f, 0.71f, 0.29f });
+      pbrTest->setMaterialType(MaterialType::kMaterialType_BasicPBR);
+      float jdiv = (float)j / ((float)DIMENSIONS - 1.0f);
+      float idiv = (float)i / ((float)DIMENSIONS - 1.0f);
+      pbrTest->setRoughness(glm::clamp(jdiv, 0.05f, 1.0f));
+      pbrTest->setMetallic(glm::clamp(idiv, 0.1f, 1.0f));
+      rm->createMaterial(pbrTest.get());
 
-  Material pbrTest;
-  pbrTest.setMaterialType(kMaterialType_BasicPBR);
-  pbrTest.setMaterialColor({ 1.0f, 0.7655f, 0.3360f });
-  //pbrTest.setMaterialColor({ 0.0f, 1.f, 0.0f });
-  pbrTest.setRoughness(0.5f);
-  pbrTest.setMetallic(1.0f);
-  rm->createMaterial(&pbrTest);
+      massiveTest[i * DIMENSIONS + j].alloc();
+      massiveTest[i*DIMENSIONS+j]->addComponent(tr.get());
+      massiveTest[i*DIMENSIONS+j]->addComponent(geo.get());
+      massiveTest[i*DIMENSIONS+j]->setMaterial(pbrTest.get());
 
-  testEntity.addComponent(tr);
-  testEntity.addComponent(geo);
-  testEntity.setMaterial(&pbrTest);
+      rm->createEntity(massiveTest[i * DIMENSIONS + j].get());
+    }
+  }
 
-  rm->createEntity(&testEntity);
+  offset = 6.0f;
+  for (size_t i = 0; i < LIGHT_ROW; i++) {
+    for (size_t j = 0; j < LIGHT_ROW; j++) {
+      PtrAlloc<PointLight> pLight;
+      pLight.alloc();
+      pLight->setPosition({ j * offset, i * offset, -1.0f });
+      pLight->setLightColor({ 1.0f, 1.0f, 1.0f });
+      lightTest[i * LIGHT_ROW + j].alloc();
+      lightTest[i * LIGHT_ROW + j]->addComponent(pLight.get());
+      rm->createEntity(lightTest[i * LIGHT_ROW + j].get());
+    }
+  }
 
-
-  Transform* lightTr = new Transform();
-  lightTr->setPosition(0.0f, -2.0f, -4.0f);
-  PointLight* pLight = new PointLight();
-
-  lightTestEntity.addComponent(lightTr);
-  lightTestEntity.addComponent(pLight);
-  rm->createEntity(&lightTestEntity);
-
-
-  Texture crate_tex;
+  /*Texture crate_tex;
   crate_tex.loadTexture("./../../data/textures/crate.png");
   rm->createTexture(&crate_tex);
 
@@ -70,13 +80,13 @@ void UserMain::init()
   crate.addComponent(crate_tr);
   crate.setMaterial(&crate_material);
 
-  rm->createEntity(&crate);
+  rm->createEntity(&crate);*/
 }
 
 void UserMain::run(float delta_time)
 {
-  Transform* tr = testEntity.getComponent<Transform>(kComponentType_Transform);
-  tr->rotateX(accumTime);
+  //Transform* tr = testEntity.getComponent<Transform>(kComponentType_Transform);
+  //tr->rotateX(accumTime);
   accumTime += delta_time;
 }
 

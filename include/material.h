@@ -3,8 +3,10 @@
 
 #include "common_def.h"
 #include "glm/glm.hpp"
+#include "dev/referenced.h"
 
-enum MaterialType {
+
+enum class MaterialType {
   kMaterialType_NONE = -1,
   kMaterialType_UnlitColor = 0,
   kMaterialType_BasicPBR = 1,
@@ -14,24 +16,25 @@ enum MaterialType {
 
 class Texture;
 union UniformBlocks;
-
-class Material {
+class Material : public Referenced {
 public:
   Material();
-  ~Material();
-  Material(const Material&);
 
   int32 getMaterialId();
   int32 getMaterialType();
   void setMaterialType(MaterialType type);
   int32 setMaterialColor(glm::vec3 color);
-  int32 setMaterialTexture(Texture texture);
+  int32 setMaterialTexture(Texture& texture);
   int32 setRoughness(float);
   int32 setMetallic(float);
 
   UniformBlocks& getMaterialSettings();
 
+protected:
+  virtual ~Material();
+
 private:
+  Material(const Material&);
   int32 materialId_;
   MaterialType type_;
   UniformBlocks* settings_;

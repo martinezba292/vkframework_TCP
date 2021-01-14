@@ -3,8 +3,9 @@
 
 class UserMain {
 public:
-  UserMain() {};
-  ~UserMain(){};
+  UserMain(){}
+  UserMain(const UserMain&){}
+  ~UserMain(){}
   void init();
   void run(float delta_time);
   void clear();

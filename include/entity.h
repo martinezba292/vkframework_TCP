@@ -3,20 +3,22 @@
 
 #include "Components/component.h"
 #include <map>
+#include "dev/ptr_alloc.h"
 
-class Material;
 struct MaterialInfo {
   int32 id;
   int32 offset;
 };
 
-class Entity {
+class Material;
+struct ComponentUpdateData;
+class Entity : public Referenced {
 public:
   Entity();
-  ~Entity();
-  Entity(const Entity&);
 
   int32 getId();
+
+  void updateComponents(ComponentUpdateData*);
   
   template <class T>
   T* getComponent(ComponentType type) {
@@ -33,12 +35,15 @@ public:
   uint32 addComponent(Component*);
   int8 setMaterial(Material*);
 
-  void removeComponents();
+protected:
+  virtual ~Entity();
 
 private:
+  Entity(const Entity&);
+
   int32 id_;
   MaterialInfo material_;
-  std::map<ComponentType, Component*> components_;
+  std::map<ComponentType, PtrAlloc<Component>> components_;
 
   friend class ResourceManager;
 

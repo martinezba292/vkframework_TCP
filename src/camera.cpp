@@ -10,7 +10,7 @@ Camera::Camera()
   right_ = { 1.0f, 0.0f, 0.0f };
   up_ = { 0.0f, 1.0f, 0.0f };
   input_ = glm::vec3(0.0f);
-  speed_ = 2.5f;
+  speed_ = 5.0f;
   aspect_ = k_wWidth / k_wHeight;
   lastCoords_ = { 400.0f, 300.0f };
   yaw_ = -89.0f;

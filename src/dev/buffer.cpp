@@ -1,8 +1,9 @@
 #include "buffer.h"
 #include <malloc.h>
-#include "static_helpers.h"
 #include "internal.h"
 #include <iostream>
+#include "static_helpers.h"
+
 
 vkdev::Buffer::Buffer()
 {
@@ -14,6 +15,14 @@ vkdev::Buffer::Buffer()
 
 vkdev::Buffer::~Buffer()
 {
+}
+
+vkdev::Buffer::Buffer(const Buffer& other)
+{
+  mapped_ = other.mapped_;
+  device_ = other.device_;
+  buffer_ = other.buffer_;
+  memory_ = other.memory_;
 }
 
 int8 vkdev::Buffer::createBuffer(Context* context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props)
@@ -40,7 +49,7 @@ int8 vkdev::Buffer::createBuffer(Context* context, VkDeviceSize size, VkBufferUs
 
   VkMemoryAllocateInfo alloc_info{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
   alloc_info.allocationSize = mem_requirements.size;
-  alloc_info.memoryTypeIndex = StaticHelpers::findMemoryType(context->physDevice_, mem_requirements.memoryTypeBits, props);
+  alloc_info.memoryTypeIndex = dev::StaticHelpers::findMemoryType(context->physDevice_, mem_requirements.memoryTypeBits, props);
 
   vkAllocateMemory(device_, &alloc_info, nullptr, &memory_);
   vkBindBufferMemory(device_, buffer_, memory_, 0);
@@ -55,7 +64,7 @@ int8 vkdev::Buffer::copyBuffer(Context* context, Buffer& src_buffer, VkDeviceSiz
     return -1;
   }
 
-  VkCommandBuffer cmd_buffer = StaticHelpers::beginSingleTimeCommands(context);
+  VkCommandBuffer cmd_buffer = dev::StaticHelpers::beginSingleTimeCommands(context);
 
   VkBufferCopy copy_region{};
   copy_region.srcOffset = 0;
@@ -63,7 +72,7 @@ int8 vkdev::Buffer::copyBuffer(Context* context, Buffer& src_buffer, VkDeviceSiz
   copy_region.size = size;
   vkCmdCopyBuffer(cmd_buffer, src_buffer.buffer_, buffer_, 1, &copy_region);
 
-  StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
+  dev::StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
   return 0;
 }
 

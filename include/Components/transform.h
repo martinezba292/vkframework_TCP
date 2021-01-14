@@ -10,18 +10,17 @@ struct ModelParams {
   glm::vec3 scale;
 };
 
-
+struct ComponentUpdateData;
 class Transform : public Component {
 public:
   Transform();
-  Transform(const Transform&);
-  ~Transform(){}
 
   void setPosition(float x, float y, float z);
   void rotateX(float angle);
   void rotateY(float angle);
   void rotateZ(float angle);
   void setScale(float sx, float sy, float sz);
+  void update(ComponentUpdateData*) override;
 
   glm::vec3 getPosition();
   glm::vec3 getRotation();
@@ -29,7 +28,11 @@ public:
 
   glm::mat4 getModel();
 
+protected:
+  virtual ~Transform(){}
+
 private:
+  Transform(const Transform&);
   ModelParams transform_data_;
 };
 

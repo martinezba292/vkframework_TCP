@@ -1,4 +1,5 @@
 #include "Components/transform.h"
+#include "dev/internal.h"
 
 
 Transform::Transform()
@@ -39,6 +40,11 @@ void Transform::rotateZ(float angle)
 void Transform::setScale(float sx, float sy, float sz)
 {
   transform_data_.scale = { sx, sy, sz };
+}
+
+void Transform::update(ComponentUpdateData* buffer)
+{
+  buffer->objectBuffer.unlitBlock.model = getModel();
 }
 
 glm::vec3 Transform::getPosition()

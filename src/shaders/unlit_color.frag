@@ -1,16 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#include "glsl_common.h"
-
-layout(binding = 0) uniform SceneUniformBuffer {
-    mat4 view;
-    mat4 proj;
-    vec3 camPos;
-    LightParams params[NLIGHTS];
-    int light_number;
-} sb;
-
 layout(location = 0) in vec4 outColor;
 
 layout(location = 0) out vec4 finalColor;

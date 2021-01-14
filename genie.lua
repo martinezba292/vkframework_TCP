@@ -28,12 +28,14 @@ project "VulkanTestProject"
 
 	includedirs {
 		"./include/",
-		"./src/dev/",
+		"./src/",
 		"./deps/glfw/include/",
 		"./deps/GLM/",
 		"./deps/sokol/",
 		"./deps/stb/",
     "./deps/vulkan/Include",
+    "./deps/ktx/include",
+    "./deps/ktx/other_include",
 	}
 
 	configuration "vs*"
@@ -53,12 +55,12 @@ project "VulkanTestProject"
 		files {
 			-- Project files --
 
-			"./include/**.h",
-			"./include/Components/**.h",
-			"./src/Components/**.cpp",
-			"./src/**.cpp",
-			"./src/dev/**.h",
-			"./src/dev/**.cpp",
+			"./include/*.h",
+			"./include/Components/*.h",
+			"./src/Components/*.cpp",
+			"./src/*.cpp",
+			"./src/dev/*.h",
+			"./src/dev/*.cpp",
 
 
 			-- GLFW files --
@@ -115,6 +117,14 @@ project "VulkanTestProject"
 
 			-- stb files --
 			"./deps/stb/stb_image.h",
+
+			-- KTX files --
+			"./deps/ktx/lib/texture.c",
+			"./deps/ktx/lib/hashlist.c",
+			"./deps/ktx/lib/filestream.c",
+			"./deps/ktx/lib/memstream.c",
+			"./deps/ktx/lib/checkheader.c",
+			"./deps/ktx/lib/swap.c",
 
 		}
 

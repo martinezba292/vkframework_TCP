@@ -7,7 +7,7 @@
 struct Context;
 struct FrameData;
 struct DebugUtils;
-struct UserMain;
+class UserMain;
 
 class VulkanApp {
 
@@ -68,8 +68,6 @@ private:
 
   void updateUniformBuffers(uint32 index);
 
-
- 
   void initFrameData(uint32 frame_count);
   void destroyFrameData(FrameData& frame_data);
 

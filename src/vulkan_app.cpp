@@ -1,6 +1,6 @@
 #include "vulkan_app.h"
-#include "internal.h"
-#include "static_helpers.h"
+#include "dev/internal.h"
+#include "dev/static_helpers.h"
 #include <map>
 #include <set>
 #include "resource_manager.h"
@@ -209,9 +209,9 @@ static int32 rateDeviceSuitability(VkPhysicalDevice device, Context context) {
 
   score += deviceProperties.limits.maxImageDimension2D;
 
-  QueueFamilyIndices indices = StaticHelpers::findQueueFamilies(device, context.surface);
+  QueueFamilyIndices indices = dev::StaticHelpers::findQueueFamilies(device, context.surface);
   bool extensionSupported = checkDeviceExtensionSupport(device);
-  SwapChainSupportDetails swapChainSupport = StaticHelpers::querySwapChain(device, context.surface);
+  SwapChainSupportDetails swapChainSupport = dev::StaticHelpers::querySwapChain(device, context.surface);
   bool swapChainSupported = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
   if (!indices.isComplete() || !extensionSupported || 
       !swapChainSupported || !deviceFeatures.samplerAnisotropy) {
@@ -254,7 +254,7 @@ void VulkanApp::setupPhysicalDevice()
 
 void VulkanApp::createLogicalDevice()
 {
-  QueueFamilyIndices indices = StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
+  QueueFamilyIndices indices = dev::StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
 
   float queuePriority = 1.0f;
   std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -305,7 +305,7 @@ void VulkanApp::createSurface()
 
 void VulkanApp::createSwapChain()
 {
-  SwapChainSupportDetails swapChainSupport = StaticHelpers::querySwapChain(context_->physDevice_, context_->surface);
+  SwapChainSupportDetails swapChainSupport = dev::StaticHelpers::querySwapChain(context_->physDevice_, context_->surface);
 
   /*SURFACE FORMAT KHR*/
   VkSurfaceFormatKHR surfaceFormat = swapChainSupport.formats[0];
@@ -346,7 +346,7 @@ void VulkanApp::createSwapChain()
   swapChainInfo.imageArrayLayers = 1;
   swapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; //VK_IMAGE_USAGE_TRANSFER_DST_BIT for post-processing
 
-  QueueFamilyIndices indices = StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
+  QueueFamilyIndices indices = dev::StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
   uint32 queueFamilyIndices[] = { indices.graphicsFamily, indices.presentFamily };
 
   if (indices.graphicsFamily != indices.presentFamily) {
@@ -387,7 +387,7 @@ void VulkanApp::createSwapChain()
   initFrameData(swapImageCount);
   context_->swapchainImageViews.resize(swapImageCount);
   for (size_t i = 0; i < swapImageCount; i++) {
-    context_->swapchainImageViews[i] = StaticHelpers::createTextureImageView(context_, swap_chain_images[i], 
+    context_->swapchainImageViews[i] = dev::StaticHelpers::createTextureImageView(context_, swap_chain_images[i],
                                                                              surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT);
   }
 
@@ -416,21 +416,21 @@ void VulkanApp::createPipelineLayout()
 void VulkanApp::createInternalMaterials()
 {
   Resources* res = ResourceManager::Get()->getResources();
-  InternalMaterial* material = &res->internalMaterials[kMaterialType_UnlitColor];
+  InternalMaterial* material = &res->internalMaterials[(int32)MaterialType::kMaterialType_UnlitColor];
   material->layout = kLayoutType_Simple_2Binds;
-  material->matPipeline = StaticHelpers::createPipeline(context_, "./../../src/shaders/unlit_color_vert.spv", 
+  material->matPipeline = dev::StaticHelpers::createPipeline(context_, "./../../src/shaders/unlit_color_vert.spv",
                                                         "./../../src/shaders/unlit_color_frag.spv",
                                                         res->layouts[kLayoutType_Simple_2Binds].pipeline);
 
-  material = &res->internalMaterials[kMaterialType_BasicPBR];
+  material = &res->internalMaterials[(int32)MaterialType::kMaterialType_BasicPBR];
   material->layout = kLayoutType_Simple_2Binds;
-  material->matPipeline = StaticHelpers::createPipeline(context_, "./../../src/shaders/basic_pbr_vert.spv",
+  material->matPipeline = dev::StaticHelpers::createPipeline(context_, "./../../src/shaders/basic_pbr_vert.spv",
                                                         "./../../src/shaders/basic_pbr_frag.spv",
                                                         res->layouts[kLayoutType_Simple_2Binds].pipeline);
 
-  material = &res->internalMaterials[kMaterialType_TextureSampler];
+  material = &res->internalMaterials[(int32)MaterialType::kMaterialType_TextureSampler];
   material->layout = kLayoutType_Texture_3Binds;
-  material->matPipeline = StaticHelpers::createPipeline(context_, "./../../src/shaders/texture_sampling_vert.spv",
+  material->matPipeline = dev::StaticHelpers::createPipeline(context_, "./../../src/shaders/texture_sampling_vert.spv",
                                                         "./../../src/shaders/texture_sampling_frag.spv",
                                                         res->layouts[kLayoutType_Texture_3Binds].pipeline);
 }
@@ -457,7 +457,7 @@ void VulkanApp::createRenderPass()
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   VkAttachmentDescription depth_attachment{};
-  depth_attachment.format = StaticHelpers::findDepthFormat(context_);
+  depth_attachment.format = dev::StaticHelpers::findDepthFormat(context_);
   depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
   depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -531,7 +531,7 @@ void VulkanApp::createFramebuffer()
 
 void VulkanApp::createCommandPool()
 {
-  QueueFamilyIndices queueIndices = StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
+  QueueFamilyIndices queueIndices = dev::StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
 
   VkCommandPoolCreateInfo commandPoolInfo{};
   commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -547,15 +547,15 @@ void VulkanApp::createCommandPool()
 
 void VulkanApp::createDepthResource()
 {
-  VkFormat depth_format = StaticHelpers::findDepthFormat(context_);
+  VkFormat depth_format = dev::StaticHelpers::findDepthFormat(context_);
   Resources* res = ResourceManager::Get()->getResources();
 
   InternalTexture* depth = &context_->depthAttachment;
-  StaticHelpers::createImage(context_, k_wWidth, k_wHeight, depth_format, VK_IMAGE_TILING_OPTIMAL, 
+  dev::StaticHelpers::createImage(context_, k_wWidth, k_wHeight, depth_format, VK_IMAGE_TILING_OPTIMAL,
                              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
                              depth->textureImage, depth->textureImageMemory);
 
-  depth->textureImageView = StaticHelpers::createTextureImageView(context_, depth->textureImage, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
+  depth->textureImageView = dev::StaticHelpers::createTextureImageView(context_, depth->textureImage, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 /*********************************************************************************************/
@@ -567,7 +567,7 @@ void VulkanApp::storeTextures()
   res->internalTextures.resize(textures_number);
 
   for (size_t i = 0; i < textures_number; i++) {
-    InternalTexture new_texture = StaticHelpers::createTextureImage(context_, Scene::userTextures[i]);
+    InternalTexture new_texture = dev::StaticHelpers::createTextureImage(context_, Scene::userTextures[i]->getPath().c_str());
     res->internalTextures[i] = new_texture;
   }
 }
@@ -715,13 +715,13 @@ void VulkanApp::createDescriptorPool()
 {
   Resources* res = ResourceManager::Get()->getResources();
 
-  for (size_t i = 0; i < kMaterialType_MAX; i++) {
+  for (size_t i = 0; i < (int32)MaterialType::kMaterialType_MAX; i++) {
     std::vector<VkDescriptorPoolSize> texPoolSizes{
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , static_cast<uint32>(context_->swapchainImageViews.size())},
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , static_cast<uint32>(context_->swapchainImageViews.size())}
     };
 
-    if (i >= kMaterialType_TextureSampler) {
+    if (i >= (int32)MaterialType::kMaterialType_TextureSampler) {
       VkDescriptorPoolSize pool{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , static_cast<uint32>(context_->swapchainImageViews.size()) };
       texPoolSizes.push_back(pool);
     }
@@ -747,7 +747,7 @@ void VulkanApp::createDescriptorSets()
 {
   Resources* resources = ResourceManager::Get()->getResources();
 
-  for (size_t j = 0; j < kMaterialType_MAX; j++) {
+  for (size_t j = 0; j < (int32)MaterialType::kMaterialType_MAX; j++) {
     InternalMaterial* mat = &resources->internalMaterials[j];
     if (mat->entitiesReferenced) {
       std::vector<VkDescriptorSetLayout> layouts(context_->swapchainImageViews.size(), 
@@ -820,7 +820,7 @@ void VulkanApp::createDescriptorSets()
         descriptorWrite[2].pImageInfo = image_info.data();
 
         uint32 descriptor_count = bind_number;
-        if (j < kMaterialType_TextureSampler) descriptor_count = 2;
+        if (j < (int32)MaterialType::kMaterialType_TextureSampler) descriptor_count = 2;
 
         vkUpdateDescriptorSets(context_->logDevice_, descriptor_count, descriptorWrite.data(), 0, nullptr);
       }
@@ -832,11 +832,11 @@ void VulkanApp::createDescriptorSets()
 
 void VulkanApp::createUniformBuffers()
 {
-  uint64_t dynamicAlignment = StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
+  uint64_t dynamicAlignment = dev::StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
 
   Resources* resources = ResourceManager::Get()->getResources();
   uint32 swapChainImageCount = context_->swapchainImageViews.size();
-  for (size_t j = 0; j < kMaterialType_MAX; j++) {
+  for (size_t j = 0; j < (int32)MaterialType::kMaterialType_MAX; j++) {
     InternalMaterial* mat = &resources->internalMaterials[j];
     mat->dynamicUniform.resize(swapChainImageCount);
     if (mat->entitiesReferenced) {
@@ -865,51 +865,31 @@ void VulkanApp::updateUniformBuffers(uint32 index)
 {
   Resources* resources = ResourceManager::Get()->getResources();
 
-  SceneUniformBuffer sceneBuffer{};
-  sceneBuffer.view = Scene::camera.getView();
-  sceneBuffer.projection = Scene::camera.getProjection();
-  sceneBuffer.cameraPosition = { Scene::camera.getPosition(), 0.0f };
-  //sceneBuffer.cameraPosition *= -1.0f;
-  sceneBuffer.lightNumber = 0;
-  int32 s = sizeof(SceneUniformBuffer);
-  //VkMappedMemoryRange memoryRange{ VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE };
-  //memoryRange.memory = resources->staticUniform[index].memory_;
-  //memoryRange.size = sizeof(SceneUniformBuffer);
-  //vkFlushMappedMemoryRanges(context_->logDevice_, 1, &memoryRange);
-
+  ComponentUpdateData update_data{};
+  update_data.sceneBuffer.view = Scene::camera.getView();
+  update_data.sceneBuffer.projection = Scene::camera.getProjection();
+  update_data.sceneBuffer.cameraPosition = { Scene::camera.getPosition() };
+  update_data.sceneBuffer.lightNumber = 0;
+  Resources* res = ResourceManager::Get()->getResources();
+  uint64_t padding = dev::StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
   for (size_t i = 0; i < Scene::entitiesCount; i++) {
-    Entity* entity = &Scene::sceneEntities[i];
-    UniformBlocks u_blocks{};
+    Entity* entity = Scene::sceneEntities[i].get();
     Material* mat = entity->getMaterial();
-    Transform* tr = entity->getComponent<Transform>(kComponentType_Transform);
-    if (tr) {
-      PointLight* light = entity->getComponent<PointLight>(kComponentType_Light);
-      if (light) {
-        glm::vec4 pos = { tr->getPosition(), 0.0f };
-        sceneBuffer.lights[sceneBuffer.lightNumber] = pos;
-        ++sceneBuffer.lightNumber;
-      }
-      if (mat) {
-        u_blocks = mat->getMaterialSettings();
-        u_blocks.unlitBlock.model = glm::mat4(1.0f);
-        u_blocks.unlitBlock.model = tr->getModel();
-        int32 offset = entity->getMaterialOffset();
-        UniformBlocks* buffer = (UniformBlocks*)((uint64_t)resources->internalMaterials[mat->getMaterialType()].dynamicUniformData +
-          (offset * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks))));
-        *buffer = u_blocks;
-      }
+    entity->updateComponents(&update_data);
+    if (mat && update_data.drawCall.geometry) {
+      int32 offset = entity->getMaterialOffset();
+      UniformBlocks* buffer = (UniformBlocks*)((uint64_t)resources->internalMaterials[mat->getMaterialType()].dynamicUniformData +
+        (offset * padding));
+      *buffer = update_data.objectBuffer;
+      res->draw_calls.push_back(update_data.drawCall);
     }
   }
-
-  memcpy(resources->staticUniform[index].mapped_, &sceneBuffer, sizeof(SceneUniformBuffer));
+  uint32 s = sizeof(SceneUniformBuffer);
+  memcpy(resources->staticUniform[index].mapped_, &update_data.sceneBuffer, sizeof(SceneUniformBuffer));
 
   for (auto& internal_material : resources->internalMaterials) {
-      uint64_t sceneUboSize = internal_material.entitiesReferenced * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
+      uint64_t sceneUboSize = internal_material.entitiesReferenced * dev::StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
       memcpy(internal_material.dynamicUniform[index].mapped_, internal_material.dynamicUniformData, sceneUboSize);
-      //memoryRange.memory = internal_material.uniformBufferMemory[index];
-      //memoryRange.size = sceneUboSize;
-      //vkFlushMappedMemoryRanges(context_->logDevice_, 1, &memoryRange);
-    //}
   }
 }
 
@@ -925,7 +905,7 @@ void VulkanApp::initFrameData(uint32 frame_count)
 
     VkCommandPoolCreateInfo commandPoolInfo{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
     commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-    QueueFamilyIndices graphicIndices = StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
+    QueueFamilyIndices graphicIndices = dev::StaticHelpers::findQueueFamilies(context_->physDevice_, context_->surface);
     commandPoolInfo.queueFamilyIndex = graphicIndices.graphicsFamily;
     //assert(vkCreateCommandPool(context_->logDevice_, &commandPoolInfo, nullptr, &context_->perFrame[i].primaryCommandPool) == VK_SUCCESS);
     vkCreateCommandPool(context_->logDevice_, &commandPoolInfo, nullptr, &context_->perFrame[i].primaryCommandPool);
@@ -1037,7 +1017,7 @@ void VulkanApp::render(uint32 index)
   vkBeginCommandBuffer(cmd_buffer, &begin_info);
   
   std::array<VkClearValue, 2> clearColor{};
-  clearColor[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+  clearColor[0].color = { 0.53f, 0.81f, 0.92f, 1.0f };
   clearColor[1].depthStencil = { 1.0f, 0 };
 
   VkRenderPassBeginInfo rp_begin{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
@@ -1051,32 +1031,11 @@ void VulkanApp::render(uint32 index)
   vkCmdBeginRenderPass(cmd_buffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 
   Resources* intResources = ResourceManager::Get()->getResources();
+  int64_t padding = dev::StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
 
-  VkBuffer vertexBuffers[] = { intResources->vertexBuffer.buffer_ };
-  VkDeviceSize offsets[] = { 0 };
-  for (size_t i = 0; i < Scene::entitiesCount; i++) {
-    Entity* entity = &Scene::sceneEntities[i];
-    Material* mat = entity->getMaterial();
-    if (mat) {
-      int32 matType = mat->getMaterialType();
-      uint32 uniform_offset = entity->getMaterialOffset() * StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
-      InternalMaterial* internalMat = &intResources->internalMaterials[matType];
-
-      vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internalMat->matPipeline);
-      vkCmdBindVertexBuffers(cmd_buffer, 0, 1, vertexBuffers, offsets);
-      vkCmdBindIndexBuffer(cmd_buffer, intResources->indicesBuffer.buffer_, 0, VK_INDEX_TYPE_UINT32);
-      vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              intResources->layouts[internalMat->layout].pipeline, 0, 1,
-                              &internalMat->matDescriptorSet[index], 1, &uniform_offset);
-
-      Geometry* geo = entity->getComponent<Geometry>(kComponentType_Geometry);
-      if (geo && geo->getId() >= 0) {
-        InternalVertexData vertex_data = intResources->vertex_data[geo->getId()];
-        uint32 first_vertex = vertex_data.offset;
-        uint32 first_index = vertex_data.index_offset;
-        vkCmdDrawIndexed(cmd_buffer, static_cast<uint32>(vertex_data.indices.size()), 1, first_index, first_vertex, 0);
-      }
-    }
+  for (auto& draw_call : intResources->draw_calls) {
+    DrawCmd cmd;
+    cmd.Execute(cmd_buffer, draw_call, index, padding);
   }
 
   vkCmdEndRenderPass(cmd_buffer);
@@ -1088,6 +1047,7 @@ void VulkanApp::render(uint32 index)
     vkCreateSemaphore(context_->logDevice_, &semaphoreInfo, nullptr,
       &context_->perFrame[index].swapchainRelease);
   }
+  intResources->draw_calls.clear();
 
   VkPipelineStageFlags waitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -1237,7 +1197,7 @@ void VulkanApp::end()
   }
 
   for (auto& material : intResources->internalMaterials) {
-    StaticHelpers::destroyMaterial(context_, &material);
+    dev::StaticHelpers::destroyMaterial(context_, &material);
   }
 
   vkDestroyRenderPass(context_->logDevice_, context_->renderPass, nullptr);
