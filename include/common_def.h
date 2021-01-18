@@ -6,7 +6,7 @@
 #include "vulkan/vulkan.h"
 #include "GLFW/glfw3.h"
 
-#define NDEBUG
+//#define NDEBUG
 
 typedef int8_t int8;
 typedef int16_t int16;

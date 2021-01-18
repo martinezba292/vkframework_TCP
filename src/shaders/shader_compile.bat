@@ -5,7 +5,7 @@ set MAX_LIGHTS=#define MAX_LIGHTS 25
 set LIGHT_DATA=struct LightSource{vec4 pos; vec4 lightcolor;};
 set LIGHT_DEFINE="#define LIGHT"
 
-FOR %%a IN (*.vert) DO (
+FOR %%a IN (glsl\*.vert) DO (
     FOR /f "delims=" %%i IN (%%a) DO (
         set var=%%i
         if "%%i"==%LIGHT_DEFINE% (
@@ -14,11 +14,11 @@ FOR %%a IN (*.vert) DO (
         )
         echo !var! >> output.vert
     )
-    .\..\..\deps\vulkan\Bin32\glslc.exe output.vert -o %%~na_vert.spv
+    .\..\..\deps\vulkan\Bin32\glslc.exe output.vert -o spir-v\%%~na_vert.spv
     del output.vert
 )
 
-FOR %%a IN (*.frag) DO (
+FOR %%a IN (glsl\*.frag) DO (
     FOR /f "delims=" %%i IN (%%a) DO (
         set var=%%i
         if "%%i"==%LIGHT_DEFINE% (
@@ -27,7 +27,7 @@ FOR %%a IN (*.frag) DO (
         )
         echo !var! >> output.frag
     )
-    .\..\..\deps\vulkan\Bin32\glslc.exe output.frag -o %%~na_frag.spv
+    .\..\..\deps\vulkan\Bin32\glslc.exe output.frag -o spir-v\%%~na_frag.spv
     del output.frag
 )
 

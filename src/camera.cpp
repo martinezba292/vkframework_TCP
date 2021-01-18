@@ -11,9 +11,9 @@ Camera::Camera()
   up_ = { 0.0f, 1.0f, 0.0f };
   input_ = glm::vec3(0.0f);
   speed_ = 5.0f;
-  aspect_ = k_wWidth / k_wHeight;
+  aspect_ = k_wWidth / (float)k_wHeight;
   lastCoords_ = { 400.0f, 300.0f };
-  yaw_ = -89.0f;
+  yaw_ = -20.0f;
   pitch_ = 0.0f;
 }
 
@@ -33,7 +33,7 @@ Camera::Camera(const Camera& other)
 
 void Camera::setAspect(float width, float height)
 {
-  aspect_ = width / height;
+  aspect_ = width / (float)height;
 }
 
 glm::vec3 Camera::getPosition()

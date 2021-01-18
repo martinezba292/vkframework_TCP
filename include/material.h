@@ -11,6 +11,7 @@ enum class MaterialType {
   kMaterialType_UnlitColor = 0,
   kMaterialType_BasicPBR = 1,
   kMaterialType_TextureSampler,
+  //kMaterialType_TextureCubemap,
   kMaterialType_MAX,
 };
 

@@ -9,6 +9,7 @@
 #include "vertex_buffer.h"
 #include "buffer.h"
 #include "dev/ptr_alloc.h"
+#include "dev/vktexture.h"
 
 
 class Entity;
@@ -117,6 +118,7 @@ enum LayoutType {
   kLayoutType_NONE = -1,
   kLayoutType_Simple_2Binds = 0,
   kLayoutType_Texture_3Binds = 1,
+  kLayoutType_Texture_Cubemap,
   kLayoutType_MAX
 };
 
@@ -129,14 +131,6 @@ struct InternalMaterial {
   std::vector<uint32> texturesReferenced;
   std::vector<vkdev::Buffer> dynamicUniform;
   UniformBlocks* dynamicUniformData;
-};
-
-
-struct InternalTexture {
-  VkImage textureImage;
-  VkDeviceMemory textureImageMemory;
-  VkImageView textureImageView;
-  VkSampler textureSampler;
 };
 
 /*****************************************************/
@@ -153,7 +147,11 @@ struct Resources {
   std::vector<vkdev::Buffer> staticUniform;
   std::array<PipelineSettings, kLayoutType_MAX> layouts;
   std::array<InternalMaterial, (int32)MaterialType::kMaterialType_MAX> internalMaterials;
-  std::vector<InternalTexture> internalTextures;
+  //PtrAlloc<Entity> cubemap;
+  InternalMaterial cubemapPipeline;
+  vkdev::VkTexture cubemapTexture;
+  std::vector<vkdev::VkTexture> itextures;
+  vkdev::VkTexture depthAttachment;
   std::vector<DrawCallData> draw_calls;
 };
 
@@ -194,7 +192,6 @@ struct Context {
   std::vector<VkSemaphore> recycledSemaphores;
   std::vector<FrameData> perFrame;
   VkCommandPool transferCommandPool;
-  InternalTexture depthAttachment;
 };
 
 /***************************************************/

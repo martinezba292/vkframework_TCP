@@ -31,25 +31,43 @@ namespace dev {
 
     SwapChainSupportDetails querySwapChain(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-    VkPipeline createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout pipelineLayout);
+    VkPipeline createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout pipeline_layout, VkCullModeFlags cull_mode, VkBool32 depth_test);
 
 
-    InternalTexture createTextureImage(Context* context, const char* texture_path);
+    //InternalTexture createTextureImage(Context* context, const char* texture_path);
 
-    VkImageView createTextureImageView(Context* context, VkImage image, VkFormat format, VkImageAspectFlags flags);
+    VkImageView createTextureImageView(VkDevice device, 
+                                       VkImage& image, 
+                                       VkFormat format, 
+                                       VkImageViewType view_type, 
+                                       uint32 mip_levels, 
+                                       uint32 layers, 
+                                       VkImageAspectFlags flags);
 
-    VkSampler createTextureSampler(Context* context);
+    VkSampler createTextureSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, uint32 mip_levels, VkBorderColor border);
 
-    void createImage(Context* context, uint32 width, uint32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-      VkMemoryPropertyFlags property, VkImage& image, VkDeviceMemory& image_memory);
+    /*void createImage(Context* context, uint32 width, uint32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+      VkMemoryPropertyFlags property, VkImage& image, VkDeviceMemory& image_memory);*/
 
     VkCommandBuffer beginSingleTimeCommands(Context* context);
 
     void endSingleTimeCommands(Context* context, VkCommandBuffer command_buffer);
 
-    void transitionImageLayout(Context* context, VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout);
+    VkWriteDescriptorSet descriptorWriteInitializer(uint32 binding, 
+                                                    VkDescriptorType type, 
+                                                    VkDescriptorSet& descriptor_set, 
+                                                    VkDescriptorBufferInfo* buffer_info,
+                                                    uint32 descriptor_count = 1);
 
-    void copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height);
+    VkWriteDescriptorSet descriptorWriteInitializer(uint32 binding, 
+                                                    VkDescriptorType type, 
+                                                    VkDescriptorSet& descriptor_set, 
+                                                    VkDescriptorImageInfo* image_info,
+                                                    uint32 descriptor_count = 1);
+
+    //void transitionImageLayout(Context* context, VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout);
+
+    //void copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height);
 
     void destroyMaterial(Context* context, InternalMaterial* material);
   }

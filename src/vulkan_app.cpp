@@ -14,6 +14,7 @@
 #include "entity.h"
 #include "material.h"
 #include "Components/point_light.h"
+#include "dev/vktexture.h"
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 
@@ -387,8 +388,12 @@ void VulkanApp::createSwapChain()
   initFrameData(swapImageCount);
   context_->swapchainImageViews.resize(swapImageCount);
   for (size_t i = 0; i < swapImageCount; i++) {
-    context_->swapchainImageViews[i] = dev::StaticHelpers::createTextureImageView(context_, swap_chain_images[i],
-                                                                             surfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT);
+    context_->swapchainImageViews[i] = dev::StaticHelpers::createTextureImageView(context_->logDevice_, 
+                                                                                  swap_chain_images[i],
+                                                                                  surfaceFormat.format, 
+                                                                                  VK_IMAGE_VIEW_TYPE_2D, 
+                                                                                  1, 1, 
+                                                                                  VK_IMAGE_ASPECT_COLOR_BIT);
   }
 
 }
@@ -404,8 +409,6 @@ void VulkanApp::createPipelineLayout()
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &res->layouts[i].descriptor;
-    //pipelineLayoutInfo.pushConstantRangeCount = 0;
-    //pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
     vkCreatePipelineLayout(context_->logDevice_, &pipelineLayoutInfo, nullptr, &res->layouts[i].pipeline);
   }
@@ -415,24 +418,27 @@ void VulkanApp::createPipelineLayout()
 
 void VulkanApp::createInternalMaterials()
 {
-  Resources* res = ResourceManager::Get()->getResources();
-  InternalMaterial* material = &res->internalMaterials[(int32)MaterialType::kMaterialType_UnlitColor];
+  //Resources* res = ResourceManager::Get()->getResources();
+  InternalMaterial* material = &resources_->internalMaterials[(int32)MaterialType::kMaterialType_UnlitColor];
   material->layout = kLayoutType_Simple_2Binds;
-  material->matPipeline = dev::StaticHelpers::createPipeline(context_, "./../../src/shaders/unlit_color_vert.spv",
-                                                        "./../../src/shaders/unlit_color_frag.spv",
-                                                        res->layouts[kLayoutType_Simple_2Binds].pipeline);
+  material->matPipeline = dev::StaticHelpers::createPipeline(context_, "./../../src/shaders/spir-v/unlit_color_vert.spv",
+                                                             "./../../src/shaders/spir-v/unlit_color_frag.spv",
+                                                             resources_->layouts[kLayoutType_Simple_2Binds].pipeline, VK_CULL_MODE_BACK_BIT, VK_TRUE);
 
-  material = &res->internalMaterials[(int32)MaterialType::kMaterialType_BasicPBR];
+  material = &resources_->internalMaterials[(int32)MaterialType::kMaterialType_BasicPBR];
   material->layout = kLayoutType_Simple_2Binds;
-  material->matPipeline = dev::StaticHelpers::createPipeline(context_, "./../../src/shaders/basic_pbr_vert.spv",
-                                                        "./../../src/shaders/basic_pbr_frag.spv",
-                                                        res->layouts[kLayoutType_Simple_2Binds].pipeline);
+  material->matPipeline = dev::StaticHelpers::createPipeline(context_, 
+                                                             "./../../src/shaders/spir-v/basic_pbr_vert.spv",
+                                                             "./../../src/shaders/spir-v/basic_pbr_frag.spv",
+                                                             resources_->layouts[kLayoutType_Simple_2Binds].pipeline, VK_CULL_MODE_BACK_BIT, VK_TRUE);
 
-  material = &res->internalMaterials[(int32)MaterialType::kMaterialType_TextureSampler];
+  material = &resources_->internalMaterials[(int32)MaterialType::kMaterialType_TextureSampler];
   material->layout = kLayoutType_Texture_3Binds;
-  material->matPipeline = dev::StaticHelpers::createPipeline(context_, "./../../src/shaders/texture_sampling_vert.spv",
-                                                        "./../../src/shaders/texture_sampling_frag.spv",
-                                                        res->layouts[kLayoutType_Texture_3Binds].pipeline);
+  material->matPipeline = dev::StaticHelpers::createPipeline(context_, 
+                                                             "./../../src/shaders/spir-v/texture_sampling_vert.spv",
+                                                             "./../../src/shaders/spir-v/texture_sampling_frag.spv",
+                                                             resources_->layouts[kLayoutType_Texture_3Binds].pipeline, VK_CULL_MODE_BACK_BIT, VK_TRUE);
+
 }
 
 /*********************************************************************************************/
@@ -456,12 +462,22 @@ void VulkanApp::createRenderPass()
   colorAttachmentRef.attachment = 0;
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+  //VkAttachmentDescription depth_attachment{};
+  //depth_attachment.format = dev::StaticHelpers::findDepthFormat(context_);
+  //depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  //depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  //depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  //depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  //depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  //depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  //depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
   VkAttachmentDescription depth_attachment{};
   depth_attachment.format = dev::StaticHelpers::findDepthFormat(context_);
   depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
   depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -477,13 +493,31 @@ void VulkanApp::createRenderPass()
   subpass.pDepthStencilAttachment = &depth_ref;
 
   /*SUBPASS*/
-  VkSubpassDependency subpassDependency{};
+  /*VkSubpassDependency subpassDependency{};
   subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
   subpassDependency.dstSubpass = 0;
   subpassDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
   subpassDependency.srcAccessMask = 0;
   subpassDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-  subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  subpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;*/
+
+  std::array<VkSubpassDependency, 2> dependencies;
+
+  dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependencies[0].dstSubpass = 0;
+  dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+  dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+  dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+  dependencies[1].srcSubpass = 0;
+  dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+  dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+  dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+  dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
   std::array<VkAttachmentDescription, 2> attachments{ colorAttachment, depth_attachment };
 
@@ -493,8 +527,8 @@ void VulkanApp::createRenderPass()
   renderPassInfo.pAttachments = attachments.data();
   renderPassInfo.subpassCount = 1;
   renderPassInfo.pSubpasses = &subpass;
-  renderPassInfo.dependencyCount = 1;
-  renderPassInfo.pDependencies = &subpassDependency;
+  renderPassInfo.dependencyCount = dependencies.size();
+  renderPassInfo.pDependencies = dependencies.data();
 
   
 
@@ -510,7 +544,7 @@ void VulkanApp::createFramebuffer()
   int32 imageCount = context_->swapchainImageViews.size();
   context_->swapchainFramebuffers.resize(imageCount);
   for (size_t i = 0; i < imageCount; i++) {
-    std::array<VkImageView, 2> attachment = { context_->swapchainImageViews[i], context_->depthAttachment.textureImageView };
+    std::array<VkImageView, 2> attachment = { context_->swapchainImageViews[i], resources_->depthAttachment.view_ };
     VkFramebufferCreateInfo framebufferInfo{};
     framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass = context_->renderPass;
@@ -548,27 +582,32 @@ void VulkanApp::createCommandPool()
 void VulkanApp::createDepthResource()
 {
   VkFormat depth_format = dev::StaticHelpers::findDepthFormat(context_);
-  Resources* res = ResourceManager::Get()->getResources();
+  //Resources* res = ResourceManager::Get()->getResources();
 
-  InternalTexture* depth = &context_->depthAttachment;
-  dev::StaticHelpers::createImage(context_, k_wWidth, k_wHeight, depth_format, VK_IMAGE_TILING_OPTIMAL,
-                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-                             depth->textureImage, depth->textureImageMemory);
-
-  depth->textureImageView = dev::StaticHelpers::createTextureImageView(context_, depth->textureImage, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
+  vkdev::VkTexture* depth = &resources_->depthAttachment;
+  depth->device_ = context_->logDevice_;
+  depth->width_ = k_wWidth;
+  depth->height_ = k_wHeight;
+  depth->createImage(context_->physDevice_, depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 1, 0);
+  depth->view_ = dev::StaticHelpers::createTextureImageView(context_->logDevice_, depth->image_, depth_format, VK_IMAGE_VIEW_TYPE_2D, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 /*********************************************************************************************/
 
 void VulkanApp::storeTextures()
 {
-  Resources* res = ResourceManager::Get()->getResources();
   uint32 textures_number = Scene::textureCount;
-  res->internalTextures.resize(textures_number);
+  resources_->itextures.resize(textures_number);
 
   for (size_t i = 0; i < textures_number; i++) {
-    InternalTexture new_texture = dev::StaticHelpers::createTextureImage(context_, Scene::userTextures[i]->getPath().c_str());
-    res->internalTextures[i] = new_texture;
+    Texture* user_texture = Scene::userTextures[i].get();
+    //vkdev::VkTexture new_texture;
+    //if (user_texture->getType() == TextureType::kTextureType_Cubemap)
+    //  resources_->itextures[i].loadCubemapKtx(context_, user_texture->getPath().c_str(), VK_FORMAT_R8G8B8A8_UNORM);
+    //else
+      resources_->itextures[i].loadImage(context_, user_texture->getPath().c_str());
+
+    //resources_->itextures[i] = new_texture;
   }
 }
 
@@ -607,7 +646,7 @@ void VulkanApp::createVertexBuffers()
     vkUnmapMemory(context_->logDevice_, staging_buffer.memory_);
 
     mainResources->vertexBuffer.copyBuffer(context_, staging_buffer, size, offset_bytes[i]);
-    staging_buffer.destroyBuffer();
+    //staging_buffer.destroyBuffer();
   }
 }
 
@@ -646,7 +685,7 @@ void VulkanApp::createIndexBuffers()
     vkUnmapMemory(context_->logDevice_, staging_buffer.memory_);
 
     mainResources->indicesBuffer.copyBuffer(context_, staging_buffer, size, offset_bytes[i]);
-    staging_buffer.destroyBuffer();
+    //staging_buffer.destroyBuffer();
   }
 }
 
@@ -706,35 +745,72 @@ void VulkanApp::createDescriptorSetLayout()
                                   &res->layouts[kLayoutType_Texture_3Binds].descriptor) != VK_SUCCESS) {
     throw std::runtime_error("Failed to create descriptor set layout");
   }
-  
+
+  std::vector<VkDescriptorSetLayoutBinding> layoutBindingCubemap(2);
+  layoutBindingCubemap[0].binding = 0;
+  layoutBindingCubemap[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  layoutBindingCubemap[0].descriptorCount = 1;
+  layoutBindingCubemap[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  layoutBindingCubemap[0].pImmutableSamplers = nullptr;
+
+  layoutBindingCubemap[1].binding = 1;
+  layoutBindingCubemap[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  layoutBindingCubemap[1].descriptorCount = 1;
+  layoutBindingCubemap[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  layoutBindingCubemap[1].pImmutableSamplers = nullptr;
+
+  layoutInfo.bindingCount = static_cast<uint32>(layoutBindingCubemap.size());
+  layoutInfo.pBindings = layoutBindingCubemap.data();
+
+  if (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+    &res->layouts[kLayoutType_Texture_Cubemap].descriptor) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to create descriptor set layout");
+  }
 }
 
 /*********************************************************************************************/
 
 void VulkanApp::createDescriptorPool()
 {
-  Resources* res = ResourceManager::Get()->getResources();
+  uint32 descriptor_size = static_cast<uint32>(context_->swapchainImageViews.size());
 
   for (size_t i = 0; i < (int32)MaterialType::kMaterialType_MAX; i++) {
-    std::vector<VkDescriptorPoolSize> texPoolSizes{
-      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , static_cast<uint32>(context_->swapchainImageViews.size())},
-      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , static_cast<uint32>(context_->swapchainImageViews.size())}
-    };
-
-    if (i >= (int32)MaterialType::kMaterialType_TextureSampler) {
-      VkDescriptorPoolSize pool{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , static_cast<uint32>(context_->swapchainImageViews.size()) };
-      texPoolSizes.push_back(pool);
+    InternalMaterial* mat = &resources_->internalMaterials[i];
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    switch (mat->layout) {
+      case kLayoutType_Simple_2Binds: {
+        poolSizes.resize(2);
+        poolSizes[0] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , descriptor_size };
+        poolSizes[1] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , descriptor_size };
+        break;
+      }
+      case kLayoutType_Texture_3Binds: {
+        poolSizes.resize(3);
+        poolSizes[0] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , descriptor_size };
+        poolSizes[1] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , descriptor_size };
+        poolSizes[2] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , descriptor_size };
+        break;
+      }
+      case kLayoutType_Texture_Cubemap: {
+        poolSizes.resize(2);
+        poolSizes[0] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , descriptor_size };
+        poolSizes[1] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , descriptor_size };
+        break;
+      }
+      default: {
+        break;
+      }
     }
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = static_cast<uint32>(texPoolSizes.size());
-    poolInfo.pPoolSizes = texPoolSizes.data();
+    poolInfo.poolSizeCount = static_cast<uint32>(poolSizes.size());
+    poolInfo.pPoolSizes = poolSizes.data();
 
-    poolInfo.maxSets = static_cast<uint32>(context_->swapchainImageViews.size());
+    poolInfo.maxSets = descriptor_size;
 
     if (vkCreateDescriptorPool(context_->logDevice_, &poolInfo, nullptr,
-      &res->internalMaterials[i].matDesciptorPool) != VK_SUCCESS) {
+      &resources_->internalMaterials[i].matDesciptorPool) != VK_SUCCESS) {
 
       throw std::runtime_error("Failed to create descriptor pool");
     }
@@ -763,66 +839,80 @@ void VulkanApp::createDescriptorSets()
         throw std::runtime_error("Failed to allocate descriptor sets");
       }
 
-      VkWriteDescriptorSet image_descriptor;
       std::vector<VkDescriptorImageInfo> image_info;
       uint32 texture_number = mat->texturesReferenced.size();
       image_info.resize(texture_number);
       for (size_t i = 0; i < texture_number; i++) {
         VkDescriptorImageInfo img_info{};
         img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        InternalTexture* tex = &resources->internalTextures[mat->texturesReferenced[i]];
-        img_info.imageView = tex->textureImageView;
-        img_info.sampler = tex->textureSampler;
+        vkdev::VkTexture* tex = &resources->itextures[mat->texturesReferenced[i]];
+        img_info.imageView = tex->view_;
+        img_info.sampler = tex->sampler_;
         image_info[i] = img_info;
       }
 
-      uint32 bind_number = 3;
-      for (size_t i = 0; i < context_->swapchainImageViews.size(); i++) {
         VkDescriptorBufferInfo bufferSceneInfo{};
-        bufferSceneInfo.buffer = resources->staticUniform[i].buffer_;
         bufferSceneInfo.offset = 0;
         bufferSceneInfo.range = sizeof(SceneUniformBuffer);
-
-        std::vector<VkWriteDescriptorSet> descriptorWrite(bind_number);
-        descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite[0].dstSet = mat->matDescriptorSet[i];
-        descriptorWrite[0].dstBinding = 0;
-        descriptorWrite[0].dstArrayElement = 0;
-        descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite[0].descriptorCount = 1;
-        descriptorWrite[0].pBufferInfo = &bufferSceneInfo;
-        descriptorWrite[0].pImageInfo = nullptr;
-        descriptorWrite[0].pTexelBufferView = nullptr;
-
-
         VkDescriptorBufferInfo bufferObjectInfo{};
-        bufferObjectInfo.buffer = mat->dynamicUniform[i].buffer_;
         bufferObjectInfo.offset = 0;
         bufferObjectInfo.range = sizeof(UniformBlocks);
+      for (size_t i = 0; i < context_->swapchainImageViews.size(); i++) {
+        bufferSceneInfo.buffer = resources->staticUniform[i].buffer_;
+        bufferObjectInfo.buffer = mat->dynamicUniform[i].buffer_;
+        std::vector<VkWriteDescriptorSet> descriptor_write;
+        switch (mat->layout) {
+          case kLayoutType_Simple_2Binds:{
+            descriptor_write.resize(2);
+            descriptor_write[0] = dev::StaticHelpers::descriptorWriteInitializer(0, 
+                                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+                                                          mat->matDescriptorSet[i],
+                                                                   &bufferSceneInfo);
 
-        descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite[1].dstSet = mat->matDescriptorSet[i];
-        descriptorWrite[1].dstBinding = 1;
-        descriptorWrite[1].dstArrayElement = 0;
-        descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        descriptorWrite[1].descriptorCount = 1;
-        descriptorWrite[1].pBufferInfo = &bufferObjectInfo;
-        descriptorWrite[1].pImageInfo = nullptr;
-        descriptorWrite[1].pTexelBufferView = nullptr;
+            descriptor_write[1] = dev::StaticHelpers::descriptorWriteInitializer(1, 
+                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 
+                                                          mat->matDescriptorSet[i],
+                                                                  &bufferObjectInfo);
+            break;
+          }
+          case kLayoutType_Texture_3Binds: {
+            descriptor_write.resize(3);
+            descriptor_write[0] = dev::StaticHelpers::descriptorWriteInitializer(0,
+                                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                          mat->matDescriptorSet[i],
+                                                                  &bufferSceneInfo);
 
+            descriptor_write[1] = dev::StaticHelpers::descriptorWriteInitializer(1,
+                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                                                          mat->matDescriptorSet[i],
+                                                                 &bufferObjectInfo);
 
-        descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite[2].dstBinding = 2;
-        descriptorWrite[2].dstSet = mat->matDescriptorSet[i];
-        descriptorWrite[2].dstArrayElement = 0;
-        descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrite[2].descriptorCount = image_info.size();
-        descriptorWrite[2].pImageInfo = image_info.data();
+            descriptor_write[2] = dev::StaticHelpers::descriptorWriteInitializer(2,
+                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                          mat->matDescriptorSet[i],
+                                                                 image_info.data(),
+                                                                 image_info.size());
+            break;
+          }
+          case kLayoutType_Texture_Cubemap: {
+            descriptor_write.resize(2);
+            descriptor_write[0] = dev::StaticHelpers::descriptorWriteInitializer(0,
+                                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                          mat->matDescriptorSet[i],
+                                                                  &bufferSceneInfo);
 
-        uint32 descriptor_count = bind_number;
-        if (j < (int32)MaterialType::kMaterialType_TextureSampler) descriptor_count = 2;
+            descriptor_write[1] = dev::StaticHelpers::descriptorWriteInitializer(1,
+                                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                          mat->matDescriptorSet[i],
+                                                                 image_info.data(),
+                                                                 image_info.size());
+            break;
+          }
+          default:
+            break;
+        }
 
-        vkUpdateDescriptorSets(context_->logDevice_, descriptor_count, descriptorWrite.data(), 0, nullptr);
+        vkUpdateDescriptorSets(context_->logDevice_, descriptor_write.size(), descriptor_write.data(), 0, nullptr);
       }
     }
   }
@@ -866,6 +956,7 @@ void VulkanApp::updateUniformBuffers(uint32 index)
   Resources* resources = ResourceManager::Get()->getResources();
 
   ComponentUpdateData update_data{};
+  //update_data.sceneBuffer.view = glm::mat4(glm::mat3(Scene::camera.getView()));
   update_data.sceneBuffer.view = Scene::camera.getView();
   update_data.sceneBuffer.projection = Scene::camera.getProjection();
   update_data.sceneBuffer.cameraPosition = { Scene::camera.getPosition() };
@@ -876,20 +967,20 @@ void VulkanApp::updateUniformBuffers(uint32 index)
     Entity* entity = Scene::sceneEntities[i].get();
     Material* mat = entity->getMaterial();
     entity->updateComponents(&update_data);
-    if (mat && update_data.drawCall.geometry) {
+    if (mat) {
       int32 offset = entity->getMaterialOffset();
       UniformBlocks* buffer = (UniformBlocks*)((uint64_t)resources->internalMaterials[mat->getMaterialType()].dynamicUniformData +
         (offset * padding));
       *buffer = update_data.objectBuffer;
-      res->draw_calls.push_back(update_data.drawCall);
     }
+    if (update_data.drawCall.geometry) res->draw_calls.push_back(update_data.drawCall);
   }
-  uint32 s = sizeof(SceneUniformBuffer);
+
   memcpy(resources->staticUniform[index].mapped_, &update_data.sceneBuffer, sizeof(SceneUniformBuffer));
 
   for (auto& internal_material : resources->internalMaterials) {
-      uint64_t sceneUboSize = internal_material.entitiesReferenced * dev::StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
-      memcpy(internal_material.dynamicUniform[index].mapped_, internal_material.dynamicUniformData, sceneUboSize);
+    uint64_t sceneUboSize = internal_material.entitiesReferenced * dev::StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
+    memcpy(internal_material.dynamicUniform[index].mapped_, internal_material.dynamicUniformData, sceneUboSize);
   }
 }
 
@@ -1030,10 +1121,9 @@ void VulkanApp::render(uint32 index)
 
   vkCmdBeginRenderPass(cmd_buffer, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 
-  Resources* intResources = ResourceManager::Get()->getResources();
+  renderCubemap(cmd_buffer, index);
   int64_t padding = dev::StaticHelpers::padUniformBufferOffset(context_, sizeof(UniformBlocks));
-
-  for (auto& draw_call : intResources->draw_calls) {
+  for (auto& draw_call : resources_->draw_calls) {
     DrawCmd cmd;
     cmd.Execute(cmd_buffer, draw_call, index, padding);
   }
@@ -1047,7 +1137,7 @@ void VulkanApp::render(uint32 index)
     vkCreateSemaphore(context_->logDevice_, &semaphoreInfo, nullptr,
       &context_->perFrame[index].swapchainRelease);
   }
-  intResources->draw_calls.clear();
+  resources_->draw_calls.clear();
 
   VkPipelineStageFlags waitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -1062,6 +1152,26 @@ void VulkanApp::render(uint32 index)
 
   vkQueueSubmit(context_->graphicsQueue, 1, &submitInfo, context_->perFrame[index].submitFence);
 
+}
+
+void VulkanApp::renderCubemap(VkCommandBuffer cmd_buffer, uint32 index)
+{
+  InternalMaterial* internalMat = &resources_->cubemapPipeline;
+  VkDeviceSize offsets[] = { 0 };
+  VkBuffer vertexBuffers[] = { resources_->vertexBuffer.buffer_ };
+
+  vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internalMat->matPipeline);
+  vkCmdBindVertexBuffers(cmd_buffer, 0, 1, vertexBuffers, offsets);
+  vkCmdBindIndexBuffer(cmd_buffer, resources_->indicesBuffer.buffer_, 0, VK_INDEX_TYPE_UINT32);
+  //uint32 offset = draw_call.offset * static_cast<uint32>(buffer_padding);
+  vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+    resources_->layouts[internalMat->layout].pipeline, 0, 1,
+    &internalMat->matDescriptorSet[index], 0, NULL);
+
+  InternalVertexData vertex_data = resources_->vertex_data[(uint32)PrimitiveType::kPrimitiveType_Cube];
+  uint32 first_vertex = vertex_data.offset;
+  uint32 first_index = vertex_data.index_offset;
+  vkCmdDrawIndexed(cmd_buffer, static_cast<uint32>(vertex_data.indices.size()), 1, first_index, first_vertex, 0);
 }
 
 /*********************************************************************************************/
@@ -1098,6 +1208,82 @@ void VulkanApp::drawFrame()
   result = presentImage(imageIndex);
 }
 
+void VulkanApp::initCubemap()
+{
+
+  resources_->cubemapTexture.loadCubemapKtx(context_, "./../../data/textures/cubemaps/cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM);
+
+  InternalMaterial* material = &resources_->cubemapPipeline;
+  material->layout = kLayoutType_Texture_Cubemap;
+  material->matPipeline = dev::StaticHelpers::createPipeline(context_, 
+                                                             "./../../src/shaders/spir-v/skybox_vert.spv",
+                                                             "./../../src/shaders/spir-v/skybox_frag.spv",
+                                                             resources_->layouts[kLayoutType_Texture_Cubemap].pipeline, 
+                                                             VK_CULL_MODE_FRONT_BIT, VK_FALSE);
+
+
+  uint32 descriptor_size = static_cast<uint32>(context_->swapchainImageViews.size());
+  std::vector<VkDescriptorPoolSize> poolSizes{ { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , descriptor_size },
+                                               { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , descriptor_size } };
+
+  VkDescriptorPoolCreateInfo poolInfo{};
+  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.poolSizeCount = static_cast<uint32>(poolSizes.size());
+  poolInfo.pPoolSizes = poolSizes.data();
+  poolInfo.maxSets = descriptor_size;
+
+  if (vkCreateDescriptorPool(context_->logDevice_, &poolInfo, nullptr,
+    &material->matDesciptorPool) != VK_SUCCESS) {
+
+    throw std::runtime_error("Failed to create descriptor pool");
+  }
+
+
+  std::vector<VkDescriptorSetLayout> layouts(context_->swapchainImageViews.size(),
+                                 resources_->layouts[material->layout].descriptor);
+
+  VkDescriptorSetAllocateInfo allocInfo{};
+  allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  allocInfo.descriptorPool = material->matDesciptorPool;
+  allocInfo.descriptorSetCount = descriptor_size;
+  allocInfo.pSetLayouts = layouts.data();
+  material->matDescriptorSet.resize(descriptor_size);
+  if (vkAllocateDescriptorSets(context_->logDevice_, &allocInfo,
+    material->matDescriptorSet.data()) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to allocate descriptor sets");
+  }
+
+  VkDescriptorImageInfo img_info{};
+  img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  vkdev::VkTexture* tex = &resources_->cubemapTexture;
+  img_info.imageView = tex->view_;
+  img_info.sampler = tex->sampler_;
+
+  VkDescriptorBufferInfo bufferSceneInfo{};
+  bufferSceneInfo.offset = 0;
+  bufferSceneInfo.range = sizeof(SceneUniformBuffer);
+
+  for (size_t i = 0; i < descriptor_size; i++) {
+    bufferSceneInfo.buffer = resources_->staticUniform[i].buffer_;
+    std::vector<VkWriteDescriptorSet> descriptor_write;
+
+    descriptor_write.resize(2);
+    descriptor_write[0] = dev::StaticHelpers::descriptorWriteInitializer(0,
+                                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                             material->matDescriptorSet[i],
+                                                         &bufferSceneInfo);
+
+    descriptor_write[1] = dev::StaticHelpers::descriptorWriteInitializer(1,
+                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             material->matDescriptorSet[i],
+                                                                &img_info);
+
+    vkUpdateDescriptorSets(context_->logDevice_, descriptor_write.size(), descriptor_write.data(), 0, nullptr);
+
+  }
+
+}
+
 /*********************************************************************************************/
 
 VulkanApp::VulkanApp()
@@ -1130,6 +1316,7 @@ void VulkanApp::start()
   glfwSetCursorPosCallback(context_->window_, InputManager::mouseCallback);
   ResourceManager::Get()->initPrimitiveGeometries();
   user_app_->init();
+  resources_ = ResourceManager::Get()->getResources();
   createAppInstance();
   setupDebugMessenger();
   createSurface();
@@ -1147,6 +1334,7 @@ void VulkanApp::start()
   createVertexBuffers();
   createIndexBuffers();
   createUniformBuffers();
+  initCubemap();
   createDescriptorPool();
   createDescriptorSets();
 }
@@ -1203,25 +1391,26 @@ void VulkanApp::end()
   vkDestroyRenderPass(context_->logDevice_, context_->renderPass, nullptr);
 
   //Swap chain
-  vkDestroyImage(context_->logDevice_, context_->depthAttachment.textureImage, nullptr);
-  vkDestroyImageView(context_->logDevice_, context_->depthAttachment.textureImageView, nullptr);
-  vkFreeMemory(context_->logDevice_, context_->depthAttachment.textureImageMemory, nullptr);
+  //vkDestroyImage(context_->logDevice_, context_->depthAttachment.textureImage, nullptr);
+  //vkDestroyImageView(context_->logDevice_, context_->depthAttachment.textureImageView, nullptr);
+  //vkFreeMemory(context_->logDevice_, context_->depthAttachment.textureImageMemory, nullptr);
   for (auto image_view : context_->swapchainImageViews) {
     vkDestroyImageView(context_->logDevice_, image_view, nullptr);
   }
   vkDestroySwapchainKHR(context_->logDevice_, context_->swapChain, nullptr);
 
   //Textures
-  for (auto& texture : intResources->internalTextures) {
-    vkDestroySampler(context_->logDevice_, texture.textureSampler, nullptr);
-    vkDestroyImageView(context_->logDevice_, texture.textureImageView, nullptr);
-    vkDestroyImage(context_->logDevice_, texture.textureImage, nullptr);
-    vkFreeMemory(context_->logDevice_, texture.textureImageMemory, nullptr);
-  }
+  //for (auto& texture : intResources->internalTextures) {
+  //  vkDestroySampler(context_->logDevice_, texture.textureSampler, nullptr);
+  //  vkDestroyImageView(context_->logDevice_, texture.textureImageView, nullptr);
+  //  vkDestroyImage(context_->logDevice_, texture.textureImage, nullptr);
+  //  vkFreeMemory(context_->logDevice_, texture.textureImageMemory, nullptr);
+  //}
 
   //Vertex Buffers
-  intResources->vertexBuffer.destroyBuffer();
-  intResources->indicesBuffer.destroyBuffer();
+  //intResources->vertexBuffer.destroyBuffer();
+  //intResources->indicesBuffer.destroyBuffer();
+  delete(rm);
   
 
   vkDestroySurfaceKHR(context_->instance_, context_->surface, nullptr);
@@ -1230,7 +1419,6 @@ void VulkanApp::end()
     DestroyDebugUtilsMessengerEXT(context_->instance_, debug_data_->debugMessenger_, nullptr);
   }
   vkDestroyInstance(context_->instance_, nullptr);
-  delete(rm);
 
   glfwDestroyWindow(context_->window_);
   glfwTerminate();

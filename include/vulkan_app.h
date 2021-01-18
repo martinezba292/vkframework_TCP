@@ -7,8 +7,8 @@
 struct Context;
 struct FrameData;
 struct DebugUtils;
+struct Resources;
 class UserMain;
-
 class VulkanApp {
 
 public:
@@ -73,14 +73,18 @@ private:
 
   int32 acquireNextImage(uint32* image);
   void render(uint32 index);
+  void renderCubemap(VkCommandBuffer cmd_buffer, uint32 index);
   int32 presentImage(uint32 index);
 
   //Draw Loop
   void drawFrame();
 
+  void initCubemap();
+
 
   VulkanApp(const VulkanApp&);
   Context* context_ = nullptr;
+  Resources* resources_;
   DebugUtils* debug_data_ = nullptr;
   UserMain* user_app_ = nullptr;
 

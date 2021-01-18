@@ -15,6 +15,7 @@ vkdev::Buffer::Buffer()
 
 vkdev::Buffer::~Buffer()
 {
+  destroyBuffer();
 }
 
 vkdev::Buffer::Buffer(const Buffer& other)
