@@ -21,12 +21,7 @@ vkdev::VkTexture::VkTexture()
 
 vkdev::VkTexture::~VkTexture()
 {
-  if (device_) {
-    vkDestroyImageView(device_, view_, nullptr);
-    vkDestroyImage(device_, image_, nullptr);
-    vkFreeMemory(device_, memory_, nullptr);
-    vkDestroySampler(device_, sampler_, nullptr);
-  }
+  destroyTexture();
 }
 
 void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, VkFormat format)
@@ -38,13 +33,9 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
   ktxResult result;
   ktxTexture* ktx_texture;
   uint32 layer_count = 6;
+  device_ = context->logDevice_;
 
   result = ktxTexture_CreateFromNamedFile(filepath, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx_texture);
-
-  device_ = context->logDevice_;
-  VkMemoryAllocateInfo mem_alloc_info;
-  mem_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-
   width_ = ktx_texture->baseWidth;
   height_ = ktx_texture->baseHeight;
   mipLevels_ = ktx_texture->numLevels;
@@ -55,11 +46,8 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
   staging_buffer.createBuffer(context, ktx_texture_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-  VkMemoryRequirements mem_requirements;
-  vkGetBufferMemoryRequirements(device_, staging_buffer.buffer_, &mem_requirements);
-  
   void* data;
-  vkMapMemory(device_, staging_buffer.memory_, 0, mem_requirements.size, 0, &data);
+  vkMapMemory(device_, staging_buffer.memory_, 0, ktx_texture_size, 0, &data);
   memcpy(data, ktx_texture_data, ktx_texture_size);
   vkUnmapMemory(device_, staging_buffer.memory_);
 
@@ -106,11 +94,9 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
                          static_cast<uint32>(copyRegions.size()), 
                          copyRegions.data());
-
-  layout_ = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  setImageLayout(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout_, subresource_range);
-
   dev::StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
+
+
 
   sampler_ = dev::StaticHelpers::createTextureSampler(context, 
                                                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 
@@ -123,7 +109,13 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
                                                      mipLevels_, layer_count, 
                                                      VK_IMAGE_ASPECT_COLOR_BIT);
 
-  //staging_buffer.destroyBuffer();
+  cmd_buffer = dev::StaticHelpers::beginSingleTimeCommands(context);
+
+  layout_ = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  setImageLayout(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout_, subresource_range);
+
+  dev::StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
+
   ktxTexture_Destroy(ktx_texture);
 }
 
@@ -184,8 +176,6 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path)
   
   setImageLayout(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresource_range);
   
-
-
   view_ = dev::StaticHelpers::createTextureImageView(device_, 
                                                      image_, 
                                                      VK_FORMAT_R8G8B8A8_SRGB, 
@@ -198,6 +188,17 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path)
                                                       VK_COMPARE_OP_ALWAYS, 
                                                       1, 
                                                       VK_BORDER_COLOR_INT_OPAQUE_BLACK);
+}
+
+void vkdev::VkTexture::destroyTexture()
+{
+  if (device_) {
+    vkDestroyImageView(device_, view_, nullptr);
+    vkDestroyImage(device_, image_, nullptr);
+    vkFreeMemory(device_, memory_, nullptr);
+    vkDestroySampler(device_, sampler_, nullptr);
+    device_ = VK_NULL_HANDLE;
+  }
 }
 
 void vkdev::VkTexture::createImage(VkPhysicalDevice pdevice, VkFormat format, VkImageUsageFlags usage, uint32 layers, VkImageCreateFlags flags)
@@ -231,54 +232,6 @@ void vkdev::VkTexture::createImage(VkPhysicalDevice pdevice, VkFormat format, Vk
   vkBindImageMemory(device_, image_, memory_, 0);
 }
 
-//void vkdev::VkTexture::createImageView(VkFormat format, uint32 layers, VkImageViewType view_type, VkImageAspectFlags flags)
-//{
-//  VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-//  viewInfo.image = image_;
-//  viewInfo.viewType = view_type;
-//  viewInfo.format = format;
-//  viewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-//  viewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-//  viewInfo.subresourceRange.aspectMask = flags;
-//  viewInfo.subresourceRange.baseMipLevel = 0;
-//  viewInfo.subresourceRange.levelCount = mipLevels_;
-//  viewInfo.subresourceRange.baseArrayLayer = 0;
-//  viewInfo.subresourceRange.layerCount = layers;
-//
-//  VkResult res = vkCreateImageView(device_, &viewInfo, nullptr, &view_);
-//}
-
-//void vkdev::VkTexture::createSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, VkBorderColor border)
-//{
-//  VkSamplerCreateInfo samplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-//  samplerInfo.magFilter = VK_FILTER_LINEAR;
-//  samplerInfo.minFilter = VK_FILTER_LINEAR;
-//
-//  samplerInfo.addressModeU = address_mode;
-//  samplerInfo.addressModeV = address_mode;
-//  samplerInfo.addressModeW = address_mode;
-//
-//  VkPhysicalDeviceProperties properties{};
-//  vkGetPhysicalDeviceProperties(context->physDevice_, &properties);
-//
-//  samplerInfo.anisotropyEnable = VK_TRUE;
-//  samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-//
-//  samplerInfo.borderColor = border;
-//  samplerInfo.unnormalizedCoordinates = VK_FALSE;
-//
-//  samplerInfo.compareEnable = VK_FALSE;
-//  samplerInfo.compareOp = compare_op;
-//
-//  samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-//  samplerInfo.mipLodBias = 0.0f;
-//  samplerInfo.minLod = 0.0f;
-//  samplerInfo.maxLod = mipLevels_;
-//
-//
-//  //assert(vkCreateSampler(device_, &samplerInfo, nullptr, &sampler_) == VK_SUCCESS);
-//  VkResult res = vkCreateSampler(device_, &samplerInfo, nullptr, &sampler_);
-//}
 
 void vkdev::VkTexture::setImageLayout(Context* context, 
                                       VkImageLayout old_layout, 
@@ -290,7 +243,7 @@ void vkdev::VkTexture::setImageLayout(Context* context,
   
   VkCommandBuffer cmd_buffer = dev::StaticHelpers::beginSingleTimeCommands(context);
 
-  VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+  VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
   barrier.oldLayout = old_layout;
   barrier.newLayout = new_layout;
   barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;

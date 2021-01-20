@@ -320,53 +320,6 @@ VkPipeline dev::StaticHelpers::createPipeline(Context* context, const char* vert
 
 /***************************************************************************************************/
 
-//InternalTexture dev::StaticHelpers::createTextureImage(Context* context, const char* texture_path)
-//{
-//  int32 texWidth, texHeight, texChannels;
-//  stbi_uc* pixels = stbi_load(texture_path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-//
-//  if (!pixels) {
-//    throw std::runtime_error("\nFailed to load image texture");
-//  }
-//
-//  VkDeviceSize imageSize = (uint64_t)(texWidth) * (uint64_t)(texHeight) * 4;
-//  vkdev::Buffer staging_buffer;
-//  staging_buffer.createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-//    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-//
-//  void* data;
-//  vkMapMemory(context->logDevice_, staging_buffer.memory_, 0, imageSize, 0, &data);
-//  memcpy(data, pixels, imageSize);
-//  vkUnmapMemory(context->logDevice_, staging_buffer.memory_);
-//
-//  stbi_image_free(pixels);
-//
-//  InternalTexture texture_result;
-//  //Resources* res = ResourceManager::Get()->getResources();
-//  createImage(context, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, 
-//              VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
-//              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture_result.textureImage, texture_result.textureImageMemory);
-//
-//  transitionImageLayout(context, texture_result.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-//                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-//  copyBufferToImage(context, staging_buffer.buffer_, texture_result.textureImage,
-//                    static_cast<uint32>(texWidth), static_cast<uint32>(texHeight));
-//  transitionImageLayout(context, texture_result.textureImage, VK_FORMAT_R8G8B8A8_SRGB,
-//                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-//
-//  vkDestroyBuffer(context->logDevice_, staging_buffer.buffer_, nullptr);
-//  vkFreeMemory(context->logDevice_, staging_buffer.memory_, nullptr);
-//
-//
-//  texture_result.textureImageView = createTextureImageView(context, texture_result.textureImage, 
-//                                                           VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
-//  texture_result.textureSampler = createTextureSampler(context);
-//
-//  return texture_result;
-//}
-
-/***************************************************************************************************/
-
 VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage& image, VkFormat format, VkImageViewType view_type, uint32 mip_levels, uint32 layers, VkImageAspectFlags flags)
 {
   //Resources* res = ResourceManager::Get()->getResources();
@@ -394,9 +347,9 @@ VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage&
   viewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
   viewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
   viewInfo.subresourceRange.aspectMask = flags;
-  //viewInfo.subresourceRange.baseMipLevel = 0;
+  viewInfo.subresourceRange.baseMipLevel = 0;
   viewInfo.subresourceRange.levelCount = mip_levels;
-  //viewInfo.subresourceRange.baseArrayLayer = 0;
+  viewInfo.subresourceRange.baseArrayLayer = 0;
   viewInfo.subresourceRange.layerCount = layers;
 
   VkImageView view;
@@ -453,13 +406,13 @@ VkSampler dev::StaticHelpers::createTextureSampler(Context* context, VkSamplerAd
 
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(context->physDevice_, &properties);
-  //samplerInfo.anisotropyEnable = VK_TRUE;
-  //samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+  samplerInfo.anisotropyEnable = VK_TRUE;
+  samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
 
   samplerInfo.borderColor = border;
-  //samplerInfo.unnormalizedCoordinates = VK_FALSE;
+  samplerInfo.unnormalizedCoordinates = VK_FALSE;
 
-  //samplerInfo.compareEnable = VK_FALSE;
+  samplerInfo.compareEnable = VK_FALSE;
   samplerInfo.compareOp = compare_op;
 
   samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
@@ -593,82 +546,12 @@ VkWriteDescriptorSet dev::StaticHelpers::descriptorWriteInitializer(uint32 bindi
 
 /***************************************************************************************************/
 
-//void dev::StaticHelpers::transitionImageLayout(Context* context, VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout)
-//{
-//  VkCommandBuffer cmd_buffer = beginSingleTimeCommands(context);
-//
-//  VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-//  barrier.oldLayout = old_layout;
-//  barrier.newLayout = new_layout;
-//  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//
-//  barrier.image = image;
-//  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-//  barrier.subresourceRange.baseMipLevel = 0;
-//  barrier.subresourceRange.levelCount = 1;
-//  barrier.subresourceRange.baseArrayLayer = 0;
-//  barrier.subresourceRange.layerCount = 1;
-//
-//
-//  VkPipelineStageFlags source_stage;
-//  VkPipelineStageFlags destination_stage;
-//  if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-//    barrier.srcAccessMask = 0;
-//    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//
-//    source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-//    destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-//
-//  }
-//  else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-//    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//    barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-//
-//    source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-//    destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-//
-//  }
-//  else {
-//    throw std::invalid_argument("\nUnsupported layout transition");
-//  }
-//
-//  vkCmdPipelineBarrier(cmd_buffer, 0, 0, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-//  endSingleTimeCommands(context, cmd_buffer);
-//}
-
-/***************************************************************************************************/
-
-//void dev::StaticHelpers::copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height)
-//{
-//  VkCommandBuffer cmd_buffer = beginSingleTimeCommands(context);
-//
-//  VkBufferImageCopy region{};
-//  region.bufferOffset = 0;
-//  region.bufferRowLength = 0;
-//  region.bufferImageHeight = 0;
-//
-//  region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-//  region.imageSubresource.mipLevel = 0;
-//  region.imageSubresource.baseArrayLayer = 0;
-//  region.imageSubresource.layerCount = 1;
-//
-//  region.imageOffset = { 0, 0, 0 };
-//  region.imageExtent = { width, height, 1 };
-//
-//  vkCmdCopyBufferToImage(cmd_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-//
-//  endSingleTimeCommands(context, cmd_buffer);
-//}
-
-/***************************************************************************************************/
-
 void dev::StaticHelpers::destroyMaterial(Context* context, InternalMaterial* material)
 {
   vkDestroyPipeline(context->logDevice_, material->matPipeline, nullptr);
-  //for (auto& buffer : material->dynamicUniform) {
-  //  buffer.destroyBuffer();
-  //}
+  for (auto& buffer : material->dynamicUniform) {
+    buffer.destroyBuffer();
+  }
 
   vkDestroyDescriptorPool(context->logDevice_, material->matDesciptorPool, nullptr);
   _aligned_free(material->dynamicUniformData);

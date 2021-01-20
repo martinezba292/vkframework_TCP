@@ -25,13 +25,14 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallBack(VkDebugUtilsMessageSeverityF
                                                     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                     void* pUserData) {
 
-  printf("validation layer: %s\n", pCallbackData->pMessage);
+  printf("\n\tVALIDATION_LAYER_MSG:\n%s\n", pCallbackData->pMessage);
 
   return VK_FALSE;
 }
 
 static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& messengerInfo) {
 
+  messengerInfo = {};
   messengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
   messengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
     VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -84,28 +85,12 @@ void VulkanApp::createAppInstance()
   
   VkApplicationInfo appInfo{};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appInfo.pApplicationName = "VulkanTest";
+  appInfo.pApplicationName = "Technical Computing Demo";
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.pEngineName = "My Vulkan Engine";
   appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.apiVersion = VK_API_VERSION_1_0;
 
-  VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = {};
-
-  VkInstanceCreateInfo createInfo{};
-  createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  createInfo.pApplicationInfo = &appInfo;
-  if (enableValidationLayers) {
-    createInfo.enabledLayerCount = validationLayers.size();
-    createInfo.ppEnabledLayerNames = validationLayers.data();
-    populateDebugMessengerCreateInfo(debugCreateInfo);
-    createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
-  } else {
-    createInfo.enabledLayerCount = 0;
-    createInfo.pNext = nullptr;
-  }
-  
-  /**Get required extensions**/
   uint32 glfwExtensionCount = 0;
   const char** glfwExtension;
   glfwExtension = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -116,10 +101,23 @@ void VulkanApp::createAppInstance()
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
+  VkInstanceCreateInfo createInfo{};
   createInfo.enabledExtensionCount = static_cast<uint32>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
 
-
+  createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+  createInfo.pApplicationInfo = &appInfo;
+  VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+  if (enableValidationLayers) {
+    createInfo.enabledLayerCount = static_cast<uint32>(validationLayers.size());
+    createInfo.ppEnabledLayerNames = validationLayers.data();
+    populateDebugMessengerCreateInfo(debugCreateInfo);
+    createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+  } else {
+    createInfo.enabledLayerCount = 0;
+    createInfo.pNext = nullptr;
+  }
+  
   vkCreateInstance(&createInfo, nullptr, &context_->instance_);
   //assert(vkCreateInstance(&createInfo, nullptr, &context_->instance_) == VK_SUCCESS);
 
@@ -243,8 +241,12 @@ void VulkanApp::setupPhysicalDevice()
     candidates.insert(std::make_pair(score, device));
   }
 
+  VkPhysicalDeviceFeatures feat;
   if (candidates.rbegin()->first > 0) {
+    //vkGetPhysicalDeviceFeatures(candidates.rbegin()->second, &feat);
+    //feat.samplerAnisotropy = VK_TRUE;
     context_->physDevice_ = candidates.rbegin()->second;
+    context_->physDevice_;
     return;
   }
 
@@ -299,7 +301,11 @@ void VulkanApp::createLogicalDevice()
 
 void VulkanApp::createSurface()
 {
-  /*assert(*/glfwCreateWindowSurface(context_->instance_, context_->window_, nullptr, &context_->surface)/* == VK_SUCCESS)*/;
+#ifdef NDEBUG
+  glfwCreateWindowSurface(context_->instance_, context_->window_, nullptr, &context_->surface);
+#else
+  assert(glfwCreateWindowSurface(context_->instance_, context_->window_, nullptr, &context_->surface) == VK_SUCCESS);
+#endif
 }
 
 /************************************************************************************************/
@@ -369,8 +375,11 @@ void VulkanApp::createSwapChain()
 
   swapChainInfo.clipped = VK_NULL_HANDLE;
 
-  //assert(vkCreateSwapchainKHR(context_->logDevice_, &swapChainInfo, nullptr, &context_->swapChain) == VK_SUCCESS);
+#ifdef NDEBUG
   vkCreateSwapchainKHR(context_->logDevice_, &swapChainInfo, nullptr, &context_->swapChain);
+#else
+  assert(vkCreateSwapchainKHR(context_->logDevice_, &swapChainInfo, nullptr, &context_->swapChain) == VK_SUCCESS);
+#endif
 
   vkGetSwapchainImagesKHR(context_->logDevice_, context_->swapChain, &swapImageCount, nullptr);
   std::vector<VkImage> swap_chain_images(swapImageCount);
@@ -462,15 +471,6 @@ void VulkanApp::createRenderPass()
   colorAttachmentRef.attachment = 0;
   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-  //VkAttachmentDescription depth_attachment{};
-  //depth_attachment.format = dev::StaticHelpers::findDepthFormat(context_);
-  //depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  //depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  //depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  //depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  //depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  //depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  //depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
   VkAttachmentDescription depth_attachment{};
   depth_attachment.format = dev::StaticHelpers::findDepthFormat(context_);
@@ -531,10 +531,11 @@ void VulkanApp::createRenderPass()
   renderPassInfo.pDependencies = dependencies.data();
 
   
-
-  //assert(vkCreateRenderPass(context_->logDevice_, &renderPassInfo, nullptr, &context_->renderPass) == VK_SUCCESS);
+#ifdef NDEBUG
   vkCreateRenderPass(context_->logDevice_, &renderPassInfo, nullptr, &context_->renderPass);
-
+#else
+  assert(vkCreateRenderPass(context_->logDevice_, &renderPassInfo, nullptr, &context_->renderPass) == VK_SUCCESS);
+#endif
 }
 
 /*********************************************************************************************/
@@ -556,8 +557,11 @@ void VulkanApp::createFramebuffer()
     framebufferInfo.height = context_->swapchainDimensions.height;
     framebufferInfo.layers = 1;
 
-    //assert(vkCreateFramebuffer(context_->logDevice_, &framebufferInfo, nullptr, &context_->swapchainFramebuffers[i]) == VK_SUCCESS);
+#ifdef NDEBUG
     vkCreateFramebuffer(context_->logDevice_, &framebufferInfo, nullptr, &context_->swapchainFramebuffers[i]);
+#else
+    assert(vkCreateFramebuffer(context_->logDevice_, &framebufferInfo, nullptr, &context_->swapchainFramebuffers[i]) == VK_SUCCESS);
+#endif
   }
 }
 
@@ -572,9 +576,11 @@ void VulkanApp::createCommandPool()
   commandPoolInfo.queueFamilyIndex = queueIndices.graphicsFamily;
 
   commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-  //assert(vkCreateCommandPool(context_->logDevice_, &commandPoolInfo, nullptr, &context_->transferCommandPool) == VK_SUCCESS);
+#ifdef NDEBUG
   vkCreateCommandPool(context_->logDevice_, &commandPoolInfo, nullptr, &context_->transferCommandPool);
-
+#else
+  assert(vkCreateCommandPool(context_->logDevice_, &commandPoolInfo, nullptr, &context_->transferCommandPool) == VK_SUCCESS);
+#endif
 }
 
 /*********************************************************************************************/
@@ -582,7 +588,6 @@ void VulkanApp::createCommandPool()
 void VulkanApp::createDepthResource()
 {
   VkFormat depth_format = dev::StaticHelpers::findDepthFormat(context_);
-  //Resources* res = ResourceManager::Get()->getResources();
 
   vkdev::VkTexture* depth = &resources_->depthAttachment;
   depth->device_ = context_->logDevice_;
@@ -714,10 +719,13 @@ void VulkanApp::createDescriptorSetLayout()
   layoutInfo.bindingCount = static_cast<uint32>(layoutBinding.size());
   layoutInfo.pBindings = layoutBinding.data();
 
-  if (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
-                                  &res->layouts[kLayoutType_Simple_2Binds].descriptor) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create descriptor set layout");
-  }
+#ifdef NDEBUG
+  (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+                                  &res->layouts[kLayoutType_Simple_2Binds].descriptor);
+#else
+  assert(vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+    &res->layouts[kLayoutType_Simple_2Binds].descriptor) == VK_SUCCESS);
+#endif
 
   std::vector<VkDescriptorSetLayoutBinding> layoutBinding3(3);
   layoutBinding3[0].binding = 0;
@@ -741,10 +749,13 @@ void VulkanApp::createDescriptorSetLayout()
   layoutInfo.bindingCount = static_cast<uint32>(layoutBinding3.size());
   layoutInfo.pBindings = layoutBinding3.data();
 
-  if (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr, 
-                                  &res->layouts[kLayoutType_Texture_3Binds].descriptor) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create descriptor set layout");
-  }
+#ifdef NDEBUG
+  (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+    &res->layouts[kLayoutType_Texture_3Binds].descriptor);
+#else
+  assert(vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+    &res->layouts[kLayoutType_Texture_3Binds].descriptor) == VK_SUCCESS);
+#endif
 
   std::vector<VkDescriptorSetLayoutBinding> layoutBindingCubemap(2);
   layoutBindingCubemap[0].binding = 0;
@@ -762,10 +773,13 @@ void VulkanApp::createDescriptorSetLayout()
   layoutInfo.bindingCount = static_cast<uint32>(layoutBindingCubemap.size());
   layoutInfo.pBindings = layoutBindingCubemap.data();
 
-  if (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
-    &res->layouts[kLayoutType_Texture_Cubemap].descriptor) != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create descriptor set layout");
-  }
+#ifdef NDEBUG
+  (vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+    &res->layouts[kLayoutType_Texture_Cubemap].descriptor);
+#else
+  assert(vkCreateDescriptorSetLayout(context_->logDevice_, &layoutInfo, nullptr,
+    &res->layouts[kLayoutType_Texture_Cubemap].descriptor) == VK_SUCCESS);
+#endif
 }
 
 /*********************************************************************************************/
@@ -809,11 +823,13 @@ void VulkanApp::createDescriptorPool()
 
     poolInfo.maxSets = descriptor_size;
 
-    if (vkCreateDescriptorPool(context_->logDevice_, &poolInfo, nullptr,
-      &resources_->internalMaterials[i].matDesciptorPool) != VK_SUCCESS) {
-
-      throw std::runtime_error("Failed to create descriptor pool");
-    }
+#ifdef NDEBUG
+    (vkCreateDescriptorPool(context_->logDevice_, &poolInfo, nullptr,
+      &resources_->internalMaterials[i].matDesciptorPool);
+#else
+    assert(vkCreateDescriptorPool(context_->logDevice_, &poolInfo, nullptr,
+      &resources_->internalMaterials[i].matDesciptorPool) == VK_SUCCESS);
+#endif
   }
 }
 
@@ -956,7 +972,6 @@ void VulkanApp::updateUniformBuffers(uint32 index)
   Resources* resources = ResourceManager::Get()->getResources();
 
   ComponentUpdateData update_data{};
-  //update_data.sceneBuffer.view = glm::mat4(glm::mat3(Scene::camera.getView()));
   update_data.sceneBuffer.view = Scene::camera.getView();
   update_data.sceneBuffer.projection = Scene::camera.getProjection();
   update_data.sceneBuffer.cameraPosition = { Scene::camera.getPosition() };
@@ -1130,13 +1145,11 @@ void VulkanApp::render(uint32 index)
 
   vkCmdEndRenderPass(cmd_buffer);
   vkEndCommandBuffer(cmd_buffer);
-  if (context_->perFrame[index].swapchainRelease == VK_NULL_HANDLE) {
+  /*if (context_->perFrame[index].swapchainRelease == VK_NULL_HANDLE) {
     VkSemaphoreCreateInfo semaphoreInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-    /*assert(vkCreateSemaphore(context_->logDevice_, &semaphoreInfo, nullptr, 
-                             &context_->perFrame[index].swapchainRelease) == VK_SUCCESS);*/
     vkCreateSemaphore(context_->logDevice_, &semaphoreInfo, nullptr,
       &context_->perFrame[index].swapchainRelease);
-  }
+  }*/
   resources_->draw_calls.clear();
 
   VkPipelineStageFlags waitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -1147,8 +1160,8 @@ void VulkanApp::render(uint32 index)
   submitInfo.waitSemaphoreCount = 1;
   submitInfo.pWaitSemaphores = &context_->perFrame[index].swapchainAcquire;
   submitInfo.pWaitDstStageMask = &waitStage;
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = &context_->perFrame[index].swapchainRelease;
+  //submitInfo.signalSemaphoreCount = 1;
+  //submitInfo.pSignalSemaphores = &context_->perFrame[index].swapchainRelease;
 
   vkQueueSubmit(context_->graphicsQueue, 1, &submitInfo, context_->perFrame[index].submitFence);
 
@@ -1163,7 +1176,6 @@ void VulkanApp::renderCubemap(VkCommandBuffer cmd_buffer, uint32 index)
   vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, internalMat->matPipeline);
   vkCmdBindVertexBuffers(cmd_buffer, 0, 1, vertexBuffers, offsets);
   vkCmdBindIndexBuffer(cmd_buffer, resources_->indicesBuffer.buffer_, 0, VK_INDEX_TYPE_UINT32);
-  //uint32 offset = draw_call.offset * static_cast<uint32>(buffer_padding);
   vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
     resources_->layouts[internalMat->layout].pipeline, 0, 1,
     &internalMat->matDescriptorSet[index], 0, NULL);
@@ -1183,9 +1195,9 @@ int32 VulkanApp::presentImage(uint32 index)
   present.pSwapchains = &context_->swapChain;
   present.pImageIndices = &index;
   present.swapchainCount = 1;
-  present.pWaitSemaphores = &context_->perFrame[index].swapchainRelease;
+  //present.pWaitSemaphores = &context_->perFrame[index].swapchainRelease;
 
-  int32 result = vkQueuePresentKHR(context_->presentQueue, &present);
+  int32 result = vkQueuePresentKHR(context_->graphicsQueue, &present);
 
   return result;
 }
@@ -1197,21 +1209,21 @@ void VulkanApp::drawFrame()
   uint32 imageIndex;
 
   auto result = acquireNextImage(&imageIndex);
-
   if (result) {
     vkQueueWaitIdle(context_->graphicsQueue);
     return;
   }
+
   updateUniformBuffers(imageIndex);
 
   render(imageIndex);
   result = presentImage(imageIndex);
 }
 
+
 void VulkanApp::initCubemap()
 {
-
-  resources_->cubemapTexture.loadCubemapKtx(context_, "./../../data/textures/cubemaps/cubemap_yokohama_rgba.ktx", VK_FORMAT_R8G8B8A8_UNORM);
+  resources_->cubemapTexture.loadCubemapKtx(context_, "./../../data/textures/cubemaps/lyckseleunorm.ktx", VK_FORMAT_R8G8B8A8_SRGB);
 
   InternalMaterial* material = &resources_->cubemapPipeline;
   material->layout = kLayoutType_Texture_Cubemap;
@@ -1310,7 +1322,7 @@ void VulkanApp::start()
   glfwInit();
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-  context_->window_ = glfwCreateWindow(k_wWidth, k_wHeight, "VulkanTest", nullptr, nullptr);
+  context_->window_ = glfwCreateWindow(k_wWidth, k_wHeight, "TechnicalComputingDemo", nullptr, nullptr);
   glfwSetKeyCallback(context_->window_, InputManager::keyCallback);
   glfwSetInputMode(context_->window_, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetCursorPosCallback(context_->window_, InputManager::mouseCallback);
@@ -1375,41 +1387,43 @@ void VulkanApp::end()
   for (auto& frame_data : context_->perFrame) {
     destroyFrameData(frame_data);
   }
-  context_->perFrame.clear();
+  for (auto& semaphore : context_->recycledSemaphores) {
+    vkDestroySemaphore(context_->logDevice_, semaphore, nullptr);
+  }
 
-  ResourceManager* rm = ResourceManager::Get();
-  Resources* intResources = rm->getResources();
-  for (auto& layout : rm->getResources()->layouts) {
+  context_->perFrame.clear();
+  vkDestroyCommandPool(context_->logDevice_, context_->transferCommandPool, nullptr);
+
+  for (auto& layout : resources_->layouts) {
     vkDestroyPipelineLayout(context_->logDevice_, layout.pipeline, nullptr);
     vkDestroyDescriptorSetLayout(context_->logDevice_, layout.descriptor, nullptr);
   }
 
-  for (auto& material : intResources->internalMaterials) {
+  for (auto& material : resources_->internalMaterials) {
     dev::StaticHelpers::destroyMaterial(context_, &material);
   }
+
+  dev::StaticHelpers::destroyMaterial(context_, &resources_->cubemapPipeline);
+  resources_->cubemapTexture.destroyTexture();
 
   vkDestroyRenderPass(context_->logDevice_, context_->renderPass, nullptr);
 
   //Swap chain
-  //vkDestroyImage(context_->logDevice_, context_->depthAttachment.textureImage, nullptr);
-  //vkDestroyImageView(context_->logDevice_, context_->depthAttachment.textureImageView, nullptr);
-  //vkFreeMemory(context_->logDevice_, context_->depthAttachment.textureImageMemory, nullptr);
+  resources_->depthAttachment.destroyTexture();
   for (auto image_view : context_->swapchainImageViews) {
     vkDestroyImageView(context_->logDevice_, image_view, nullptr);
   }
   vkDestroySwapchainKHR(context_->logDevice_, context_->swapChain, nullptr);
 
   //Textures
-  //for (auto& texture : intResources->internalTextures) {
-  //  vkDestroySampler(context_->logDevice_, texture.textureSampler, nullptr);
-  //  vkDestroyImageView(context_->logDevice_, texture.textureImageView, nullptr);
-  //  vkDestroyImage(context_->logDevice_, texture.textureImage, nullptr);
-  //  vkFreeMemory(context_->logDevice_, texture.textureImageMemory, nullptr);
-  //}
+  for (auto& texture : resources_->itextures) {
+    texture.destroyTexture();
+  }
 
   //Vertex Buffers
-  //intResources->vertexBuffer.destroyBuffer();
-  //intResources->indicesBuffer.destroyBuffer();
+  ResourceManager* rm = ResourceManager::Get();
+  resources_->vertexBuffer.destroyBuffer();
+  resources_->indicesBuffer.destroyBuffer();
   delete(rm);
   
 

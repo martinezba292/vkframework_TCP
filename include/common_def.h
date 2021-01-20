@@ -6,7 +6,7 @@
 #include "vulkan/vulkan.h"
 #include "GLFW/glfw3.h"
 
-//#define NDEBUG
+#define VALIDATION_LAYERS
 
 typedef int8_t int8;
 typedef int16_t int16;
@@ -29,10 +29,10 @@ static std::vector<const char*> deviceExtensions = {
   "VK_KHR_swapchain"
 };
 
-#ifdef NDEBUG
-  const bool enableValidationLayers = false;
-#else
+#ifdef VALIDATION_LAYERS
   const bool enableValidationLayers = true;
+#else
+  const bool enableValidationLayers = false;
 #endif
 
 

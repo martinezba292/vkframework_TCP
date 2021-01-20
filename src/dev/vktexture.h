@@ -14,8 +14,8 @@ namespace vkdev {
 
     void loadCubemapKtx(Context* context, const char* filepath, VkFormat format);
     void loadImage(Context* context, const char* texture_path);
+    void destroyTexture();
     void createImage(VkPhysicalDevice pdevice, VkFormat format, VkImageUsageFlags usage, uint32 layers, VkImageCreateFlags flags);
-    //void createImageView(VkFormat format, uint32 layers, VkImageViewType view_type, VkImageAspectFlags flags);
 
     VkDevice device_;
     VkImage image_;
@@ -29,7 +29,6 @@ namespace vkdev {
     VkSampler sampler_;
 
   private:
-    //void createSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, VkBorderColor border);
     void setImageLayout(Context* context, 
                         VkImageLayout old_layout, 
                         VkImageLayout new_layout, 

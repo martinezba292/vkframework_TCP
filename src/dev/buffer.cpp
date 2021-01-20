@@ -82,6 +82,7 @@ void vkdev::Buffer::destroyBuffer()
   if (buffer_) {
     vkDestroyBuffer(device_, buffer_, nullptr);
     vkFreeMemory(device_, memory_, nullptr);
+    buffer_ = VK_NULL_HANDLE;
   }
 }
 
