@@ -10,7 +10,7 @@ struct ModelParams {
   glm::vec3 scale;
 };
 
-struct ComponentUpdateData;
+//struct ComponentUpdateData;
 class Transform : public Component {
 public:
   Transform();
@@ -20,7 +20,7 @@ public:
   void rotateY(float angle);
   void rotateZ(float angle);
   void setScale(float sx, float sy, float sz);
-  void update(ComponentUpdateData*) override;
+  void update(UpdateData*) override;
 
   glm::vec3 getPosition();
   glm::vec3 getRotation();

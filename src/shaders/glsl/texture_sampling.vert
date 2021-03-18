@@ -8,8 +8,8 @@ layout(location = 2) in vec2 inUv;
 #define LIGHT
 
 layout(binding = 0) uniform SceneUniformBuffer {
-    mat4 view;
     mat4 proj;
+    mat4 view;
     vec3 camPos;
     LightSource lights[MAX_LIGHTS];
     int light_number;

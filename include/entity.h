@@ -18,7 +18,7 @@ public:
 
   int32 getId();
 
-  void updateComponents(ComponentUpdateData*);
+  void updateEntity(UpdateData*, uint64_t buffer_padding);
   
   template <class T>
   T* getComponent(ComponentType type) {

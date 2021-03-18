@@ -129,8 +129,8 @@ VkShaderModule dev::StaticHelpers::createShaderModule(const VkDevice device, con
   shader_module_info.pCode = reinterpret_cast<const uint32*>(code.data());
 
   VkShaderModule shader_module;
-  //assert(vkCreateShaderModule(device, &shader_module_info, nullptr, &shader_module) == VK_SUCCESS);
-  vkCreateShaderModule(device, &shader_module_info, nullptr, &shader_module);
+  assert(vkCreateShaderModule(device, &shader_module_info, nullptr, &shader_module) == VK_SUCCESS);
+  //vkCreateShaderModule(device, &shader_module_info, nullptr, &shader_module);
 
   return shader_module;
 }
@@ -161,7 +161,13 @@ SwapChainSupportDetails dev::StaticHelpers::querySwapChain(VkPhysicalDevice devi
 
 /***************************************************************************************************/
 
-VkPipeline dev::StaticHelpers::createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout pipeline_layout, VkCullModeFlags cull_mode, VkBool32 depth_test)
+VkPipeline dev::StaticHelpers::createPipeline(Context* context, 
+                                              const char* vert_path, 
+                                              const char* frag_path, 
+                                              VkPipelineLayout pipeline_layout, 
+                                              VkCullModeFlags cull_mode, 
+                                              VkBool32 depth_test,
+                                              uint8 vertex_desc)
 {
   auto vertex_shader = dev::StaticHelpers::loadShader(vert_path);
   auto fragment_shader = dev::StaticHelpers::loadShader(frag_path);
@@ -192,7 +198,7 @@ VkPipeline dev::StaticHelpers::createPipeline(Context* context, const char* vert
   vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertexInputInfo.vertexBindingDescriptionCount = 1;
   vertexInputInfo.pVertexBindingDescriptions = &InternalVertexData::getBindingDescription();
-  std::vector<VkVertexInputAttributeDescription> attributeDescription = InternalVertexData::getAttributeDescription();
+  std::vector<VkVertexInputAttributeDescription> attributeDescription = InternalVertexData::getAttributeDescription((VertexDescriptor)vertex_desc);
   vertexInputInfo.vertexAttributeDescriptionCount = attributeDescription.size();
   vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data();
 
@@ -318,34 +324,54 @@ VkPipeline dev::StaticHelpers::createPipeline(Context* context, const char* vert
   return new_pipeline;
 }
 
-/***************************************************************************************************/
-
-VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage& image, VkFormat format, VkImageViewType view_type, uint32 mip_levels, uint32 layers, VkImageAspectFlags flags)
+VkFormat dev::StaticHelpers::getTextureFormat(TextureFormat format)
 {
-  //Resources* res = ResourceManager::Get()->getResources();
-  /*VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-  viewInfo.image = image;
-  viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  viewInfo.format = format;
-  viewInfo.subresourceRange.aspectMask = flags;
-  viewInfo.subresourceRange.baseMipLevel = 0;
-  viewInfo.subresourceRange.levelCount = 1;
-  viewInfo.subresourceRange.baseArrayLayer = 0;
-  viewInfo.subresourceRange.layerCount = 1;
-
-  VkImageView image_view_result;
-  if (vkCreateImageView(context->logDevice_, &viewInfo, nullptr, &image_view_result) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create image view");
+  switch (format) {
+  case TextureFormat::kTextureFormat_RGBA8_SRGB: {
+    return VK_FORMAT_R8G8B8A8_SRGB;
+    break;
+    }
+  case TextureFormat::kTextureFormat_RGBA16_FLOAT: {
+    return VK_FORMAT_R16G16B16A16_SFLOAT;
+    break;
+    }
+  case TextureFormat::kTextureFormat_RGBA32_FLOAT: {
+    return VK_FORMAT_R32G32B32A32_SFLOAT;
+    break;
+  }
+  case TextureFormat::kTextureFormat_RGB16_FLOAT: {
+    return VK_FORMAT_R16G16B16_SFLOAT;
+    break;
+  }
+  case TextureFormat::kTextureFormat_RGB32_FLOAT: {
+    return VK_FORMAT_R32G32B32_SFLOAT;
+    break;
+  }
+  case TextureFormat::kTextureFormat_RGBA16_UNORM: {
+    return VK_FORMAT_R16G16B16A16_UNORM;
+    break;
+  }
+  case TextureFormat::kTextureFormat_RGBA8_UNORM: {
+    return VK_FORMAT_R8G8B8A8_UNORM;
+    break;
+  }
+  default:
+    break;
   }
 
-  return image_view_result;*/
+  return VK_FORMAT_R8G8B8A8_SRGB;
+}
 
+/***************************************************************************************************/
+
+VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage& image, VkFormat format, VkImageViewType view_type, uint32 mip_levels, uint32 layers, VkImageAspectFlags flags, VkComponentMapping mapping)
+{
   VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
   viewInfo.image = image;
   viewInfo.viewType = view_type;
   viewInfo.format = format;
-  viewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-  viewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+  viewInfo.components = mapping;
+  viewInfo.subresourceRange = {};
   viewInfo.subresourceRange.aspectMask = flags;
   viewInfo.subresourceRange.baseMipLevel = 0;
   viewInfo.subresourceRange.levelCount = mip_levels;
@@ -360,42 +386,8 @@ VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage&
 //
 ///***************************************************************************************************/
 //
-VkSampler dev::StaticHelpers::createTextureSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, uint32 mip_levels, VkBorderColor border)
+VkSampler dev::StaticHelpers::createTextureSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, uint32 mip_levels, VkBorderColor border, VkBool32 anisotropy)
 {
-  //VkSamplerCreateInfo samplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-  //samplerInfo.magFilter = VK_FILTER_LINEAR;
-  //samplerInfo.minFilter = VK_FILTER_LINEAR;
-
-  //samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  //samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-  //samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-  //VkPhysicalDeviceProperties properties{};
-  //vkGetPhysicalDeviceProperties(context->physDevice_, &properties);
-
-  //samplerInfo.anisotropyEnable = VK_TRUE;
-  //samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-
-  //samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-  //samplerInfo.unnormalizedCoordinates = VK_FALSE;
-
-  //samplerInfo.compareEnable = VK_FALSE;
-  //samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-  //samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-  //samplerInfo.mipLodBias = 0.0f;
-  //samplerInfo.minLod = 0.0f;
-  //samplerInfo.maxLod = 0.0f;
-
-  ////Resources* res = ResourceManager::Get()->getResources();
-
-  //VkSampler sampler_result;
-  //if (vkCreateSampler(context->logDevice_, &samplerInfo, nullptr, &sampler_result) != VK_SUCCESS) {
-  //  throw std::runtime_error("\nFailed to create texture sampler");
-  //}
-
-  //return sampler_result;
-
   VkSamplerCreateInfo samplerInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
   samplerInfo.magFilter = VK_FILTER_LINEAR;
   samplerInfo.minFilter = VK_FILTER_LINEAR;
@@ -406,7 +398,7 @@ VkSampler dev::StaticHelpers::createTextureSampler(Context* context, VkSamplerAd
 
   VkPhysicalDeviceProperties properties{};
   vkGetPhysicalDeviceProperties(context->physDevice_, &properties);
-  samplerInfo.anisotropyEnable = VK_TRUE;
+  samplerInfo.anisotropyEnable = anisotropy;
   samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
 
   samplerInfo.borderColor = border;
@@ -418,56 +410,13 @@ VkSampler dev::StaticHelpers::createTextureSampler(Context* context, VkSamplerAd
   samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
   samplerInfo.mipLodBias = 0.0f;
   samplerInfo.minLod = 0.0f;
-  samplerInfo.maxLod = mip_levels;
+  samplerInfo.maxLod = static_cast<float>(mip_levels);
 
   VkSampler sampler;
   //assert(vkCreateSampler(device_, &samplerInfo, nullptr, &sampler_) == VK_SUCCESS);
   VkResult res = vkCreateSampler(context->logDevice_, &samplerInfo, nullptr, &sampler);
   return sampler;
 }
-
-/***************************************************************************************************/
-
-//void dev::StaticHelpers::createImage(Context* context, uint32 width, uint32 height,
-//                                VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, 
-//                                VkMemoryPropertyFlags property, VkImage& image, VkDeviceMemory& image_memory)
-//{
-//  VkImageCreateInfo imageInfo{ VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-//  imageInfo.imageType = VK_IMAGE_TYPE_2D;
-//  imageInfo.extent.width = static_cast<uint32>(width);
-//  imageInfo.extent.height = static_cast<uint32>(height);
-//  imageInfo.extent.depth = 1;
-//  imageInfo.mipLevels = 1;
-//  imageInfo.arrayLayers = 1;
-//
-//  imageInfo.format = format;
-//  imageInfo.tiling = tiling;
-//
-//  imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-//  imageInfo.usage = usage;
-//
-//  imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-//  imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-//  imageInfo.flags = 0;
-//
-//  if (vkCreateImage(context->logDevice_, &imageInfo, nullptr, &image) != VK_SUCCESS) {
-//    throw std::runtime_error("\nFailed to create image");
-//  }
-//
-//  VkMemoryRequirements memRequirements;
-//  vkGetImageMemoryRequirements(context->logDevice_, image, &memRequirements);
-//
-//  VkMemoryAllocateInfo allocInfo{ VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-//  allocInfo.allocationSize = memRequirements.size;
-//  allocInfo.memoryTypeIndex = findMemoryType(context->physDevice_, memRequirements.memoryTypeBits, 
-//                                             property);
-//
-//  if (vkAllocateMemory(context->logDevice_, &allocInfo, nullptr, &image_memory) != VK_SUCCESS) {
-//    throw std::runtime_error("\Failed to allocate texture memory");
-//  }
-//
-//  vkBindImageMemory(context->logDevice_, image, image_memory, 0);
-//}
 
 /***************************************************************************************************/
 
@@ -505,6 +454,8 @@ void dev::StaticHelpers::endSingleTimeCommands(Context* context, VkCommandBuffer
   vkFreeCommandBuffers(context->logDevice_, context->transferCommandPool, 1, &command_buffer);
 }
 
+/***************************************************************************************************/
+
 VkWriteDescriptorSet dev::StaticHelpers::descriptorWriteInitializer(uint32 binding, 
                                                                     VkDescriptorType type, 
                                                                     VkDescriptorSet& descriptor_set,  
@@ -524,6 +475,31 @@ VkWriteDescriptorSet dev::StaticHelpers::descriptorWriteInitializer(uint32 bindi
   return write_descriptor;
 }
 
+/***************************************************************************************************/
+
+VkDescriptorSetLayoutBinding dev::StaticHelpers::layoutBindingInitializer(VkDescriptorType type, VkShaderStageFlags flags, 
+                                                                          uint32 binding, uint32 descriptor_count /*= 1*/)
+{
+  VkDescriptorSetLayoutBinding layout_binding{};
+  layout_binding.descriptorType = type;
+  layout_binding.stageFlags = flags;
+  layout_binding.binding = binding;
+  layout_binding.descriptorCount = descriptor_count;
+  return layout_binding;
+}
+
+/***************************************************************************************************/
+
+VkDescriptorSetLayoutCreateInfo dev::StaticHelpers::setLayoutCreateInfoInitializer(const std::vector<VkDescriptorSetLayoutBinding>& bindings)
+{
+  VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo{};
+  setLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  setLayoutCreateInfo.pBindings = bindings.data();
+  setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+  return setLayoutCreateInfo;
+}
+
+/***************************************************************************************************/
 
 VkWriteDescriptorSet dev::StaticHelpers::descriptorWriteInitializer(uint32 binding, 
                                                                     VkDescriptorType type, 

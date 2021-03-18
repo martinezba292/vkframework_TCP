@@ -11,8 +11,9 @@ Texture::Texture(const Texture& other)
   path_ = other.path_;
 }
 
-void Texture::loadTexture(const char* path, TextureType type)
+void Texture::loadTexture(const char* path, TextureType type, TextureFormat format)
 {
+  format_ = format;
   type_ = type;
   path_ = path;
 }
@@ -25,6 +26,11 @@ int16 Texture::getId()
 std::string Texture::getPath()
 {
   return path_;
+}
+
+TextureFormat Texture::getFormat()
+{
+  return format_;
 }
 
 TextureType Texture::getType()

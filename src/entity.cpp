@@ -29,16 +29,17 @@ int32 Entity::getId()
 }
 
 
-void Entity::updateComponents(ComponentUpdateData* buffer)
+void Entity::updateEntity(UpdateData* buffer, uint64_t buffer_padding)
 {
   Material* mat = getMaterial();
-  if (mat) {
-    buffer->objectBuffer = mat->getMaterialSettings();
-    buffer->drawCall.offset = getMaterialOffset();
-    buffer->drawCall.materialType = mat->getMaterialType();
-  }
+  
   for (auto& component : components_) {
     component.second->update(buffer);
+  }
+  buffer->drawCall.offset = material_.offset;
+  if (mat) {
+    buffer->drawCall.materialType = mat->getMaterialType();
+    mat->updateMaterialSettings(buffer->model, material_.offset, buffer_padding);
   }
 }
 

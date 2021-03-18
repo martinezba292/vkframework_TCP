@@ -12,12 +12,23 @@ enum class TextureType {
   kTextureType_MAX,
 };
 
+enum class TextureFormat {
+  kTextureFormat_RGBA8_SRGB,
+  kTextureFormat_RGBA16_FLOAT,
+  kTextureFormat_RGBA32_FLOAT,
+  kTextureFormat_RGB16_FLOAT,
+  kTextureFormat_RGB32_FLOAT,
+  kTextureFormat_RGBA8_UNORM,
+  kTextureFormat_RGBA16_UNORM,
+};
+
 class Texture : public Referenced {
 public:
   Texture();
-  void loadTexture(const char* path, TextureType type);
+  void loadTexture(const char* path, TextureType type, TextureFormat format);
   int16 getId();
   std::string getPath();
+  TextureFormat getFormat();
   TextureType getType();
 
 protected:
@@ -27,6 +38,7 @@ private:
   Texture(const Texture&);
   int32 id_;
   TextureType type_;
+  TextureFormat format_;
   std::string path_;
 
   friend class ResourceManager;

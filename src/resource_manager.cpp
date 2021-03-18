@@ -139,8 +139,6 @@ void ResourceManager::initPrimitiveGeometries()
 
   float xy;   //amplitude
 
-  float PI = 3.141596f;
-
   std::vector<Vertex>sphere;
   float sectorStep = 2 * PI / longitudeRev;
   float stackStep = PI / latitudeRev;
@@ -263,6 +261,22 @@ void ResourceManager::createTexture(Texture* texture)
   Scene::userTextures[Scene::textureCount] = texture;
   ++Scene::textureCount;
 }
+
+Camera& ResourceManager::getCamera()
+{
+  return Scene::camera;
+}
+
+//Texture* ResourceManager::getCubemapTexture()
+//{
+//  //return resources_->cubemap.get();
+//}
+
+//void ResourceManager::createCubemap(const char* texture_path, TextureFormat format)
+//{
+//  //resources_->cubemap.alloc();
+//  //resources_->cubemap->loadTexture(texture_path, format);
+//}
 
 ResourceManager::ResourceManager()
 {

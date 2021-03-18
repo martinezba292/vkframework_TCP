@@ -11,7 +11,7 @@ struct PointLightData {
 };
 
 class Transform;
-struct ComponentUpdateData;
+//struct UpdateData;
 class PointLight : public Component {
 public:
   PointLight();
@@ -19,7 +19,7 @@ public:
   void setPosition(glm::vec3 position);
   glm::vec3 getPosition();
   void setLightColor(glm::vec3 color);
-  void update(ComponentUpdateData*) override;
+  void update(UpdateData*) override;
 
 protected:
   virtual ~PointLight(){}

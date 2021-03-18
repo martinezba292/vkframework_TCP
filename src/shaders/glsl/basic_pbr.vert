@@ -11,8 +11,8 @@ layout(location = 1) out vec3 worldNormal;
 #define LIGHT
 
 layout(binding = 0) uniform SceneUniformBuffer {
-    mat4 view;
     mat4 proj;
+    mat4 view;
     LightSource lights[MAX_LIGHTS];
     vec3 camPos;
     int light_number;

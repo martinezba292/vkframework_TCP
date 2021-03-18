@@ -17,6 +17,9 @@ vkdev::VkTexture::VkTexture()
   layerCount_ = 1;
   layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
   device_ = VK_NULL_HANDLE;
+  image_ = VK_NULL_HANDLE;
+  view_ = VK_NULL_HANDLE;
+  sampler_ = VK_NULL_HANDLE;
 }
 
 vkdev::VkTexture::~VkTexture()
@@ -24,7 +27,7 @@ vkdev::VkTexture::~VkTexture()
   destroyTexture();
 }
 
-void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, VkFormat format)
+void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, VkFormat format, uint32 layer_count, VkImageCreateFlags flags, VkImageViewType viewflags)
 {
   std::ifstream f(filepath);
   if (f.fail())
@@ -32,7 +35,6 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
 
   ktxResult result;
   ktxTexture* ktx_texture;
-  uint32 layer_count = 6;
   device_ = context->logDevice_;
 
   result = ktxTexture_CreateFromNamedFile(filepath, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx_texture);
@@ -55,7 +57,7 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
   createImage(context->physDevice_, format, 
               VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
               layer_count, 
-              VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+              flags);
 
   VkCommandBuffer cmd_buffer = dev::StaticHelpers::beginSingleTimeCommands(context);
 
@@ -85,8 +87,7 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
   subresource_range.baseMipLevel = 0;
   subresource_range.levelCount = mipLevels_;
   subresource_range.layerCount = layer_count;
-
-  setImageLayout(context, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresource_range);
+  setImageLayout(cmd_buffer, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresource_range);
 
   vkCmdCopyBufferToImage(cmd_buffer, 
                          staging_buffer.buffer_, 
@@ -94,8 +95,6 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
                          static_cast<uint32>(copyRegions.size()), 
                          copyRegions.data());
-  dev::StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
-
 
 
   sampler_ = dev::StaticHelpers::createTextureSampler(context, 
@@ -105,24 +104,27 @@ void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, Vk
                                                       VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
   view_ = dev::StaticHelpers::createTextureImageView(device_, image_, format, 
-                                                     VK_IMAGE_VIEW_TYPE_CUBE, 
+                                                     viewflags, 
                                                      mipLevels_, layer_count, 
                                                      VK_IMAGE_ASPECT_COLOR_BIT);
 
-  cmd_buffer = dev::StaticHelpers::beginSingleTimeCommands(context);
-
   layout_ = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  setImageLayout(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout_, subresource_range);
+  setImageLayout(cmd_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, layout_, subresource_range);
 
   dev::StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
+
+  descriptor_.imageLayout = layout_;
+  descriptor_.imageView = view_;
+  descriptor_.sampler = sampler_;
 
   ktxTexture_Destroy(ktx_texture);
 }
 
-void vkdev::VkTexture::loadImage(Context* context, const char* texture_path)
+void vkdev::VkTexture::loadImage(Context* context, const char* texture_path, VkFormat format)
 {
   int32 texWidth, texHeight, texChannels;
   stbi_uc* pixels = stbi_load(texture_path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+  //float* pixels = stbi_loadf(texture_path, &texWidth, &texHeight, &texChannels, 0);
   if (!pixels) {
     throw std::runtime_error("\nFailed to load image texture");
   }
@@ -131,7 +133,7 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path)
   height_ = texHeight;
   mipLevels_ = 1;
   device_ = context->logDevice_;
-  VkDeviceSize imageSize = (uint64_t)(texWidth) * (uint64_t)(texHeight) * 4;
+  VkDeviceSize imageSize = (uint64_t)(texWidth) * (uint64_t)(texHeight) * sizeof(float);
   vkdev::Buffer staging_buffer;
   staging_buffer.createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -144,7 +146,7 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path)
   stbi_image_free(pixels);
 
   createImage(context->physDevice_, 
-              VK_FORMAT_R8G8B8A8_SRGB, 
+              format, 
               VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
               1, 0);
 
@@ -153,9 +155,9 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path)
   subresource_range.baseMipLevel = 0;
   subresource_range.levelCount = 1;
   subresource_range.layerCount = 1;
-  setImageLayout(context, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresource_range);
-
   VkCommandBuffer cmd_buffer = dev::StaticHelpers::beginSingleTimeCommands(context);
+  setImageLayout(cmd_buffer, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresource_range);
+
 
   VkBufferImageCopy region{};
   region.bufferOffset = 0;
@@ -172,22 +174,26 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path)
 
   vkCmdCopyBufferToImage(cmd_buffer, staging_buffer.buffer_, image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
+  
+  setImageLayout(cmd_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresource_range);
+  
   dev::StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
-  
-  setImageLayout(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subresource_range);
-  
   view_ = dev::StaticHelpers::createTextureImageView(device_, 
                                                      image_, 
-                                                     VK_FORMAT_R8G8B8A8_SRGB, 
+                                                     format, 
                                                      VK_IMAGE_VIEW_TYPE_2D, 
                                                      1, 1, 
                                                      VK_IMAGE_ASPECT_COLOR_BIT);
 
   sampler_ = dev::StaticHelpers::createTextureSampler(context, 
-                                                      VK_SAMPLER_ADDRESS_MODE_REPEAT, 
+                                                      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 
                                                       VK_COMPARE_OP_ALWAYS, 
                                                       1, 
                                                       VK_BORDER_COLOR_INT_OPAQUE_BLACK);
+
+  descriptor_.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  descriptor_.imageView = view_;
+  descriptor_.sampler = sampler_;
 }
 
 void vkdev::VkTexture::destroyTexture()
@@ -196,7 +202,8 @@ void vkdev::VkTexture::destroyTexture()
     vkDestroyImageView(device_, view_, nullptr);
     vkDestroyImage(device_, image_, nullptr);
     vkFreeMemory(device_, memory_, nullptr);
-    vkDestroySampler(device_, sampler_, nullptr);
+    if (sampler_)
+      vkDestroySampler(device_, sampler_, nullptr);
     device_ = VK_NULL_HANDLE;
   }
 }
@@ -216,6 +223,7 @@ void vkdev::VkTexture::createImage(VkPhysicalDevice pdevice, VkFormat format, Vk
   image_info.arrayLayers = layers;
   image_info.flags = flags;
 
+
   //assert(vkCreateImage(device_, &image_info, nullptr, &image_) == VK_SUCCESS);
   VkResult res = vkCreateImage(device_, &image_info, nullptr, &image_);
 
@@ -233,16 +241,13 @@ void vkdev::VkTexture::createImage(VkPhysicalDevice pdevice, VkFormat format, Vk
 }
 
 
-void vkdev::VkTexture::setImageLayout(Context* context, 
+void vkdev::VkTexture::setImageLayout(VkCommandBuffer cmd_buffer, 
                                       VkImageLayout old_layout, 
                                       VkImageLayout new_layout, 
                                       VkImageSubresourceRange subresource_range, 
                                       VkPipelineStageFlags src_stage_mask, 
                                       VkPipelineStageFlags dst_stage_mask)
 {
-  
-  VkCommandBuffer cmd_buffer = dev::StaticHelpers::beginSingleTimeCommands(context);
-
   VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
   barrier.oldLayout = old_layout;
   barrier.newLayout = new_layout;
@@ -316,7 +321,6 @@ void vkdev::VkTexture::setImageLayout(Context* context,
   }
 
   vkCmdPipelineBarrier(cmd_buffer, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-  dev::StaticHelpers::endSingleTimeCommands(context, cmd_buffer);
 
 }
 

@@ -12,7 +12,7 @@ enum class PrimitiveType {
   kPrimitiveType_Sphere
 };
 
-struct ComponentUpdateData;
+//struct ComponentUpdateData;
 class Geometry : public Component {
 public:
   Geometry();
@@ -21,7 +21,7 @@ public:
                     uint32* indices, uint32 index_number);
   void loadGeometry(VertexBuffer& buffer);
   void create();
-  void update(ComponentUpdateData*) override;
+  void update(UpdateData*) override;
   void initWithPrimitive(PrimitiveType type);
 
 protected:

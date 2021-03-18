@@ -42,9 +42,9 @@ void Transform::setScale(float sx, float sy, float sz)
   transform_data_.scale = { sx, sy, sz };
 }
 
-void Transform::update(ComponentUpdateData* buffer)
+void Transform::update(UpdateData* buffer)
 {
-  buffer->objectBuffer.unlitBlock.model = getModel();
+  buffer->model = getModel();
 }
 
 glm::vec3 Transform::getPosition()

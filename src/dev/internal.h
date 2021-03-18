@@ -11,9 +11,9 @@
 #include "dev/ptr_alloc.h"
 #include "dev/vktexture.h"
 
-
 class Entity;
 class Camera;
+class Texture;
 
 const uint32 kMaxInstance = 200;
 const uint32 kMaxMaterial = 200;
@@ -32,6 +32,14 @@ struct Scene {
   static std::chrono::steady_clock::time_point lastTime;
 };
 
+
+enum class VertexDescriptor {
+  kVertexDescriptor_NONE = 0,
+  kVertexDescriptor_Pos = 1,
+  kVertexDescriptor_Pos_Norm = 2,
+  kVertexDescriptor_Pos_Norm_UV = 3,
+};
+
 struct InternalVertexData {
   std::vector<Vertex> vertex;
   std::vector<uint32> indices;
@@ -47,22 +55,21 @@ struct InternalVertexData {
     return bindingDescription;
   }
 
-  static std::vector<VkVertexInputAttributeDescription> getAttributeDescription() {
-    std::vector<VkVertexInputAttributeDescription> attributeDescription(3);
-    attributeDescription[0].binding = 0;
-    attributeDescription[0].location = 0;
-    attributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescription[0].offset = 0;
+  static std::vector<VkVertexInputAttributeDescription> getAttributeDescription(VertexDescriptor desc = 
+                                                                                VertexDescriptor::kVertexDescriptor_Pos_Norm_UV) {
 
-    attributeDescription[1].binding = 0;
-    attributeDescription[1].location = 1;
-    attributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescription[1].offset = sizeof(glm::vec3);
+    VkFormat formats[3] = { VK_FORMAT_R32G32B32_SFLOAT , 
+                            VK_FORMAT_R32G32B32_SFLOAT , 
+                            VK_FORMAT_R32G32_SFLOAT };
 
-    attributeDescription[2].binding = 0;
-    attributeDescription[2].location = 2;
-    attributeDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescription[2].offset = 2 * sizeof(glm::vec3);
+    int8 desc_index = (int8)desc;
+    std::vector<VkVertexInputAttributeDescription> attributeDescription(desc_index);
+    for (size_t i = 0; i < desc_index; i++) {
+      attributeDescription[i].binding = 0;
+      attributeDescription[i].location = i;
+      attributeDescription[i].format = formats[i];
+      attributeDescription[i].offset = i * sizeof(glm::vec3);
+    }
 
     return attributeDescription;
   }
@@ -72,7 +79,7 @@ struct InternalVertexData {
 
 struct UnlitUniform {
   glm::mat4 model;
-  glm::vec4 color;
+  glm::vec4 albedo;
 };
 
 struct TextureUniform {
@@ -89,10 +96,27 @@ struct BPBRUniform {
   glm::vec2 padding;
 };
 
+struct SkyboxUniform {
+  glm::mat4 viewStatic;
+};
+
+struct IBLUniform {
+  glm::mat4 model;
+  glm::vec4 albedo;
+  float roughness;
+  float metallic;
+  float specular;
+  float exposure;
+  float gamma;
+  glm::vec3 padding;
+};
+
 union UniformBlocks {
   UnlitUniform unlitBlock;
   TextureUniform textureBlock;
   BPBRUniform pbrBlock;
+  SkyboxUniform skyboxBlock;
+  IBLUniform pbriblBlock;
 };
 
 struct LightParams {
@@ -101,16 +125,16 @@ struct LightParams {
 };
 
 struct SceneUniformBuffer {
-  glm::mat4 view;
   glm::mat4 projection;
+  glm::mat4 view;
   std::array<LightParams, kMaxLights> lights;
   glm::vec3 cameraPosition;
   uint32 lightNumber;
 };
 
-struct ComponentUpdateData {
+struct UpdateData {
+  glm::mat4 model;
   SceneUniformBuffer sceneBuffer;
-  UniformBlocks objectBuffer;
   DrawCallData drawCall;
 };
 
@@ -119,6 +143,7 @@ enum LayoutType {
   kLayoutType_Simple_2Binds = 0,
   kLayoutType_Texture_3Binds = 1,
   kLayoutType_Texture_Cubemap,
+  kLayoutType_PBRIBL,
   kLayoutType_MAX
 };
 
@@ -147,12 +172,13 @@ struct Resources {
   std::vector<vkdev::Buffer> staticUniform;
   std::array<PipelineSettings, kLayoutType_MAX> layouts;
   std::array<InternalMaterial, (int32)MaterialType::kMaterialType_MAX> internalMaterials;
-  //PtrAlloc<Entity> cubemap;
-  InternalMaterial cubemapPipeline;
-  vkdev::VkTexture cubemapTexture;
   std::vector<vkdev::VkTexture> itextures;
   vkdev::VkTexture depthAttachment;
   std::vector<DrawCallData> draw_calls;
+  vkdev::VkTexture brdf;
+  vkdev::VkTexture irradianceCube;
+  vkdev::VkTexture prefilteredCube;
+  VkPipelineCache pipelineCache;
 };
 
 

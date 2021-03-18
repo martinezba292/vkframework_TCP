@@ -31,13 +31,13 @@ void PointLight::setLightColor(glm::vec3 color)
   params_.lightColor = { color, 1.0f };
 }
 
-void PointLight::update(ComponentUpdateData* buffer)
+void PointLight::update(UpdateData* buffer)
 {
   LightParams* light_block = &buffer->sceneBuffer.lights[buffer->sceneBuffer.lightNumber];
   light_block->lightPosition = { lightTransform_->getPosition() , 0.0f};
   light_block->lilghtColor = params_.lightColor;
   ++buffer->sceneBuffer.lightNumber;
-  buffer->objectBuffer.unlitBlock.model = lightTransform_->getModel();
+  buffer->model = lightTransform_->getModel();
 }
 
 

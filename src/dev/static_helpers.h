@@ -11,6 +11,7 @@ struct Context;
 struct InternalMaterial;
 struct InternalTexture;
 class Texture;
+enum class TextureFormat;
 
 namespace dev {
   namespace StaticHelpers {
@@ -31,10 +32,16 @@ namespace dev {
 
     SwapChainSupportDetails querySwapChain(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-    VkPipeline createPipeline(Context* context, const char* vert_path, const char* frag_path, VkPipelineLayout pipeline_layout, VkCullModeFlags cull_mode, VkBool32 depth_test);
+    VkPipeline createPipeline(Context* context, 
+                              const char* vert_path, 
+                              const char* frag_path, 
+                              VkPipelineLayout pipeline_layout, 
+                              VkCullModeFlags cull_mode, 
+                              VkBool32 depth_test, 
+                              uint8 vertex_desc = 3);
 
 
-    //InternalTexture createTextureImage(Context* context, const char* texture_path);
+    VkFormat getTextureFormat(TextureFormat format);
 
     VkImageView createTextureImageView(VkDevice device, 
                                        VkImage& image, 
@@ -42,12 +49,14 @@ namespace dev {
                                        VkImageViewType view_type, 
                                        uint32 mip_levels, 
                                        uint32 layers, 
-                                       VkImageAspectFlags flags);
+                                       VkImageAspectFlags flags,
+                                       VkComponentMapping mapping = { VK_COMPONENT_SWIZZLE_R, 
+                                                                      VK_COMPONENT_SWIZZLE_G, 
+                                                                      VK_COMPONENT_SWIZZLE_B, 
+                                                                      VK_COMPONENT_SWIZZLE_A });
 
-    VkSampler createTextureSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, uint32 mip_levels, VkBorderColor border);
+    VkSampler createTextureSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, uint32 mip_levels, VkBorderColor border, VkBool32 anisotropy = VK_TRUE);
 
-    /*void createImage(Context* context, uint32 width, uint32 height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-      VkMemoryPropertyFlags property, VkImage& image, VkDeviceMemory& image_memory);*/
 
     VkCommandBuffer beginSingleTimeCommands(Context* context);
 
@@ -65,9 +74,10 @@ namespace dev {
                                                     VkDescriptorImageInfo* image_info,
                                                     uint32 descriptor_count = 1);
 
-    //void transitionImageLayout(Context* context, VkImage image, VkFormat format, VkImageLayout old_layout, VkImageLayout new_layout);
+    VkDescriptorSetLayoutBinding layoutBindingInitializer(VkDescriptorType type, VkShaderStageFlags flags, 
+                                                          uint32 binding, uint32 descriptor_count = 1);
 
-    //void copyBufferToImage(Context* context, VkBuffer buffer, VkImage image, uint32 width, uint32 height);
+    VkDescriptorSetLayoutCreateInfo setLayoutCreateInfoInitializer(const std::vector<VkDescriptorSetLayoutBinding>& bindings);
 
     void destroyMaterial(Context* context, InternalMaterial* material);
   }

@@ -8,8 +8,8 @@ layout(location = 0) out vec4 finalColor;
 #define LIGHT
 
 layout(binding = 0) uniform SceneUniformBuffer {
-    mat4 view;
     mat4 proj;
+    mat4 view;
     LightSource lights[MAX_LIGHTS];
     vec3 camPos;
     int light_number;

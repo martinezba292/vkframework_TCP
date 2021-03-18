@@ -3,6 +3,7 @@
 #include "Components/texture.h"
 #include "dev/internal.h"
 #include "resource_manager.h"
+#include "camera.h"
 
 Material::Material()
 {
@@ -35,7 +36,7 @@ int32 Material::getMaterialType()
 
 void Material::setMaterialType(MaterialType type)
 {
-  if ((int32)type_ >= 0) 
+  if ((int32)type_ >= 0)
     throw std::runtime_error("Already initialized");
 
   type_ = type;
@@ -46,17 +47,26 @@ int32 Material::setMaterialColor(glm::vec3 color)
   if (type_ >= MaterialType::kMaterialType_TextureSampler)
     throw std::runtime_error("Wrong material type");
 
-  settings_->unlitBlock.color = glm::vec4(color, 1.0f);
+  settings_->unlitBlock.albedo = glm::vec4(color, 1.0f);
   return 0;
 }
 
 int32 Material::setMaterialTexture(Texture& texture)
 {
-  if (texture.getId() < 0)
-    throw std::runtime_error("Texture hasn't been created yet");
+  if (texture.getId() < 0) {
+    printf("Texture hasn't been created yet");
+    return -1;
+  }
 
-  if (type_ < MaterialType::kMaterialType_TextureSampler)
-    throw std::runtime_error("Wrong material type");
+  if (type_ < MaterialType::kMaterialType_TextureSampler) {
+    printf("Wrong material type");
+    return -1;
+  }
+
+  if (texture.getType() != TextureType::kTextureType_2D) {
+    printf("Wrong texture type");
+    return -1;
+  }
 
   InternalMaterial* mat = &ResourceManager::Get()->getResources()->internalMaterials[(int32)type_];
   auto result = std::find(mat->texturesReferenced.begin(), mat->texturesReferenced.end(), texture.getId());
@@ -71,9 +81,82 @@ int32 Material::setMaterialTexture(Texture& texture)
   return 0;
 }
 
+int32 Material::setTextureCubemap(Texture& texture, Camera& camera)
+{
+  //if (type_ != MaterialType::kMaterialType_Skybox) {
+  //  printf("Wrong Material type");
+  //  return -1;
+  //}
+
+  if (texture.getType() != TextureType::kTextureType_Cubemap) {
+    printf("Wrong texture type");
+    return -1;
+  }
+  InternalMaterial* mat = &ResourceManager::Get()->getResources()->internalMaterials[(int32)type_];
+  auto result = std::find(mat->texturesReferenced.begin(), mat->texturesReferenced.end(), texture.getId());
+  if (result != mat->texturesReferenced.end()) {
+    printf("Texture already in use");
+    return -1;
+  }
+
+  mat->texturesReferenced.push_back(texture.getId());
+  settings_->skyboxBlock.viewStatic = camera.getView();
+  settings_->skyboxBlock.viewStatic[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+  return 0;
+}
+
+
+int32 Material::setExposure(float exposure)
+{
+  if (type_ != MaterialType::kMaterialType_PBRIBL) {
+    throw std::runtime_error("Wrong material type");
+    return -1;
+  }
+
+  settings_->pbriblBlock.exposure = exposure;
+  return 0;
+}
+
+int32 Material::setGammaCorrection(float gamma)
+{
+  if (type_ != MaterialType::kMaterialType_PBRIBL) {
+    throw std::runtime_error("Wrong material type");
+    return -1;
+  }
+
+  settings_->pbriblBlock.gamma = gamma;
+  return 0;
+}
+
+void Material::updateMaterialSettings(glm::mat4 model, const uint32 buffer_offset, const uint64_t buffer_padding)
+{
+  ResourceManager* rm = ResourceManager::Get();
+  switch (type_) {
+  case MaterialType::kMaterialType_Skybox: {
+    settings_->skyboxBlock.viewStatic = rm->getCamera().getView();
+    settings_->skyboxBlock.viewStatic[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    break;
+  }
+  //case MaterialType::kMaterialType_EquirectangularCube: {
+  //  settings_->skyboxBlock.viewStatic = rm->getCamera().getView();
+  //  break;
+  //}
+  default: {
+    settings_->unlitBlock.model = model;
+    break;
+  }
+  }
+
+  InternalMaterial* mat = &rm->getResources()->internalMaterials[(int32)type_];
+  UniformBlocks* uniform_buffer = (UniformBlocks*)((uint64_t)mat->dynamicUniformData +
+                                                   (buffer_offset * buffer_padding));
+  *uniform_buffer = *settings_;
+}
+
 int32 Material::setRoughness(float rough)
 {
-  if (type_ != MaterialType::kMaterialType_BasicPBR) {
+  if (type_ < MaterialType::kMaterialType_BasicPBR ||
+      type_ > MaterialType::kMaterialType_PBRIBL) {
     printf("Wrong material type");
     return -1;
   }
@@ -84,7 +167,8 @@ int32 Material::setRoughness(float rough)
 
 int32 Material::setMetallic(float metal)
 {
-  if (type_ != MaterialType::kMaterialType_BasicPBR) {
+  if (type_ < MaterialType::kMaterialType_BasicPBR || 
+      type_ > MaterialType::kMaterialType_PBRIBL) {
     printf("Wrong material type");
     return -1;
   }
@@ -92,6 +176,7 @@ int32 Material::setMetallic(float metal)
   settings_->pbrBlock.metallic = metal;
   return 0;
 }
+
 
 UniformBlocks& Material::getMaterialSettings()
 {

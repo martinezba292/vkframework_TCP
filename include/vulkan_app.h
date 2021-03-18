@@ -41,8 +41,11 @@ private:
 
   void createPipelineLayout();
 
+  void createPipelineCache();
+
   //SHADERS //VERTEX //VIEWPORT //DRAW MODE
   void createInternalMaterials();
+
 
   //Render Pass
   void createRenderPass();
@@ -73,13 +76,16 @@ private:
 
   int32 acquireNextImage(uint32* image);
   void render(uint32 index);
-  void renderCubemap(VkCommandBuffer cmd_buffer, uint32 index);
+  void generateBRDFLUT();
+  void generateIrradianceCube();
+  void generatePrefilteredCube();
+  uint32 generateIBLTextures();
+
   int32 presentImage(uint32 index);
 
   //Draw Loop
   void drawFrame();
 
-  void initCubemap();
 
 
   VulkanApp(const VulkanApp&);

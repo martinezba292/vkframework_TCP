@@ -12,12 +12,12 @@ enum class ComponentType {
   kComponentType_MAX
 };
 
-struct ComponentUpdateData;
+struct UpdateData;
 class Component : public Referenced {
 public:
   ComponentType getComponentType();
   int32 getId();
-  virtual void update(ComponentUpdateData*) = 0;
+  virtual void update(UpdateData*) = 0;
 
 protected:
   Component();

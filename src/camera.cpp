@@ -5,7 +5,7 @@
 
 Camera::Camera()
 {
-  position_ = { 0.0f, 0.0f, 10.0f };
+  position_ = { 0.0f, 0.0f, 20.0f };
   forward_ = { 0.0f, 0.0f, -1.0f };
   right_ = { 1.0f, 0.0f, 0.0f };
   up_ = { 0.0f, 1.0f, 0.0f };
@@ -13,8 +13,8 @@ Camera::Camera()
   speed_ = 5.0f;
   aspect_ = k_wWidth / (float)k_wHeight;
   lastCoords_ = { 400.0f, 300.0f };
-  yaw_ = -20.0f;
-  pitch_ = 0.0f;
+  yaw_ = -75.3f;
+  pitch_ = 14.5f;
 }
 
 Camera::Camera(const Camera& other)

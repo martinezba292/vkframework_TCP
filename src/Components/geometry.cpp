@@ -32,7 +32,7 @@ void Geometry::create()
 
 
 
-void Geometry::update(ComponentUpdateData* buffer)
+void Geometry::update(UpdateData* buffer)
 {
   buffer->drawCall.geometry = id_;
 }

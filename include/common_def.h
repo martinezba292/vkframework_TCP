@@ -7,6 +7,7 @@
 #include "GLFW/glfw3.h"
 
 #define VALIDATION_LAYERS
+#define PI 3.14159265359f
 
 typedef int8_t int8;
 typedef int16_t int16;
