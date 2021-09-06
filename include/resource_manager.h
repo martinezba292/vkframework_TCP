@@ -1,12 +1,18 @@
 #ifndef __RESOURCE_MANAGER__
 #define __RESOURCE_MANAGER__ 1
 
+#include <string>
+#include <list>
+#include "dev/ptr_alloc.h"
+#include "common_def.h"
+
 class VertexBuffer;
 class Entity;
 struct Resources;
 class Material;
 class Texture;
 class Camera;
+class Geometry;
 //enum class TextureFormat;
 class ResourceManager {
 public:
@@ -20,14 +26,16 @@ public:
   void createMaterial(Material*);
   void createTexture(Texture*);
   Camera& getCamera();
-  //void createCubemap(const char* texture_path, TextureFormat format);
-  //Texture* getCubemapTexture();
+  std::list<PtrAlloc<Geometry>> loadObj(std::string path);
 
 
 private:
   ResourceManager();
   Resources* resources_;
   static ResourceManager* instance_;
+  void terrainGenerator(uint32 w, uint32 h);
+  void sphereGenerator(float longitude_rev, float latitude_rev);
+
 };
 
 #endif

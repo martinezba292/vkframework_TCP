@@ -2,6 +2,8 @@
 #define __INTERNAL_DATA__ 1
 
 #include "glm/glm.hpp"
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/hash.hpp"
 #include <chrono>
 #include <array>
 #include "draw_cmd.h"
@@ -10,13 +12,14 @@
 #include "buffer.h"
 #include "dev/ptr_alloc.h"
 #include "dev/vktexture.h"
+#include <queue>
 
 class Entity;
 class Camera;
 class Texture;
 
-const uint32 kMaxInstance = 200;
-const uint32 kMaxMaterial = 200;
+const uint32 kMaxInstance = 500;
+const uint32 kMaxMaterial = 500;
 const uint32 kMaxTexture = 20;
 const uint32 kTexturePerShader = 10;
 const uint32 kMaxLights = 25;
@@ -32,6 +35,15 @@ struct Scene {
   static std::chrono::steady_clock::time_point lastTime;
 };
 
+//Used for loadObj function in resource manager
+//Need to use Vertex struct with unordered map
+template<>struct std::hash<Vertex> {
+  size_t operator()(Vertex const& vertex) const {
+    return ((hash<glm::vec3>()(vertex.vertex) ^
+            (hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
+            (hash<glm::vec2>()(vertex.uv) << 1);
+  }
+};
 
 enum class VertexDescriptor {
   kVertexDescriptor_NONE = 0,
@@ -111,12 +123,20 @@ struct IBLUniform {
   glm::vec3 padding;
 };
 
+struct NoiseBlock {
+  glm::mat4 model;
+  float randc;
+  float amplification;
+  glm::vec2 padding;
+};
+
 union UniformBlocks {
   UnlitUniform unlitBlock;
   TextureUniform textureBlock;
   BPBRUniform pbrBlock;
   SkyboxUniform skyboxBlock;
   IBLUniform pbriblBlock;
+  NoiseBlock noiseBlock;
 };
 
 struct LightParams {
@@ -144,6 +164,7 @@ enum LayoutType {
   kLayoutType_Texture_3Binds = 1,
   kLayoutType_Texture_Cubemap,
   kLayoutType_PBRIBL,
+  kLayoutType_Noise,
   kLayoutType_MAX
 };
 
@@ -170,14 +191,19 @@ struct Resources {
   vkdev::Buffer vertexBuffer;
   vkdev::Buffer indicesBuffer;
   std::vector<vkdev::Buffer> staticUniform;
+
   std::array<PipelineSettings, kLayoutType_MAX> layouts;
+
   std::array<InternalMaterial, (int32)MaterialType::kMaterialType_MAX> internalMaterials;
   std::vector<vkdev::VkTexture> itextures;
   vkdev::VkTexture depthAttachment;
-  std::vector<DrawCallData> draw_calls;
+  std::queue<DrawCallData> draw_calls;
   vkdev::VkTexture brdf;
   vkdev::VkTexture irradianceCube;
   vkdev::VkTexture prefilteredCube;
+  vkdev::VkTexture noiseTexture;
+  vkdev::VkTexture rockTerrainTexture;
+  vkdev::VkTexture grassTerrainTexture;
   VkPipelineCache pipelineCache;
 };
 
@@ -192,8 +218,6 @@ struct SwapchainDimension {
 };
 
 struct FrameData {
-  VkDevice device;
-  int32 graphicsQueue;
   VkFence submitFence;
   VkCommandPool primaryCommandPool;
   VkCommandBuffer primaryCommandBuffer;

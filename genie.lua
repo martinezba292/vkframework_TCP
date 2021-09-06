@@ -36,6 +36,7 @@ project "VulkanTestProject"
     "./deps/vulkan/Include",
     "./deps/ktx/include",
     "./deps/ktx/other_include",
+		"./deps/tinyobj"
 	}
 
 	configuration "vs*"
@@ -125,6 +126,9 @@ project "VulkanTestProject"
 			"./deps/ktx/lib/memstream.c",
 			"./deps/ktx/lib/checkheader.c",
 			"./deps/ktx/lib/swap.c",
+
+
+			"./deps/tinyobj/tiny_obj_loader.h",
 
 		}
 

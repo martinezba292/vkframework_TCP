@@ -36,7 +36,10 @@ void InputManager::keyCallback(Window* window, int32 key, int32 scancode, int32 
     inputState[kKeyCode_D] = state;
     break;
   }
-
+  case GLFW_KEY_ESCAPE: {
+    inputState[kKeyCode_ESC] = state;
+    break;
+  }
   default: {
     break;
   }

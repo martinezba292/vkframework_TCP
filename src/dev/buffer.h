@@ -12,7 +12,7 @@ namespace vkdev {
     ~Buffer();
     Buffer(const Buffer&);
 
-    int8 createBuffer(Context* context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props);
+    int64_t createBuffer(Context* context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props);
     int8 copyBuffer(Context* context, Buffer& src_buffer, VkDeviceSize size, VkDeviceSize dst_offset);
     void destroyBuffer();
 

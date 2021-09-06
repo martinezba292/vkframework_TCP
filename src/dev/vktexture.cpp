@@ -30,8 +30,7 @@ vkdev::VkTexture::~VkTexture()
 void vkdev::VkTexture::loadCubemapKtx(Context* context, const char* filepath, VkFormat format, uint32 layer_count, VkImageCreateFlags flags, VkImageViewType viewflags)
 {
   std::ifstream f(filepath);
-  if (f.fail())
-    throw std::runtime_error("Failed to open the texture cubemap");
+  assert(!f.fail());
 
   ktxResult result;
   ktxTexture* ktx_texture;
@@ -124,7 +123,6 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path, VkF
 {
   int32 texWidth, texHeight, texChannels;
   stbi_uc* pixels = stbi_load(texture_path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-  //float* pixels = stbi_loadf(texture_path, &texWidth, &texHeight, &texChannels, 0);
   if (!pixels) {
     throw std::runtime_error("\nFailed to load image texture");
   }
@@ -133,7 +131,7 @@ void vkdev::VkTexture::loadImage(Context* context, const char* texture_path, VkF
   height_ = texHeight;
   mipLevels_ = 1;
   device_ = context->logDevice_;
-  VkDeviceSize imageSize = (uint64_t)(texWidth) * (uint64_t)(texHeight) * sizeof(float);
+  VkDeviceSize imageSize = (uint64_t)(texWidth) * (uint64_t)(texHeight) * sizeof(uint32);
   vkdev::Buffer staging_buffer;
   staging_buffer.createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -222,10 +220,7 @@ void vkdev::VkTexture::createImage(VkPhysicalDevice pdevice, VkFormat format, Vk
   image_info.usage = usage;
   image_info.arrayLayers = layers;
   image_info.flags = flags;
-
-
-  //assert(vkCreateImage(device_, &image_info, nullptr, &image_) == VK_SUCCESS);
-  VkResult res = vkCreateImage(device_, &image_info, nullptr, &image_);
+  assert(vkCreateImage(device_, &image_info, nullptr, &image_) == VK_SUCCESS);
 
   VkMemoryRequirements memRequirements;
   vkGetImageMemoryRequirements(device_, image_, &memRequirements);
@@ -235,8 +230,7 @@ void vkdev::VkTexture::createImage(VkPhysicalDevice pdevice, VkFormat format, Vk
   allocInfo.memoryTypeIndex = dev::StaticHelpers::findMemoryType(pdevice, memRequirements.memoryTypeBits,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-  //assert(vkAllocateMemory(device_, &allocInfo, nullptr, &memory_) == VK_SUCCESS);
-  res = vkAllocateMemory(device_, &allocInfo, nullptr, &memory_);
+  assert(vkAllocateMemory(device_, &allocInfo, nullptr, &memory_) == VK_SUCCESS);
   vkBindImageMemory(device_, image_, memory_, 0);
 }
 

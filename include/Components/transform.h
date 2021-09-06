@@ -20,6 +20,7 @@ public:
   void rotateY(float angle);
   void rotateZ(float angle);
   void setScale(float sx, float sy, float sz);
+
   void update(UpdateData*) override;
 
   glm::vec3 getPosition();

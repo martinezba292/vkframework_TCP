@@ -68,7 +68,7 @@ uint32 Entity::addComponent(Component* new_component)
   return 0;
 }
 
-int8 Entity::setMaterial(Material* material)
+int32 Entity::setMaterial(Material* material)
 {
   if (material_.id >= 0) return -1;
   if (material->getMaterialId() < 0)

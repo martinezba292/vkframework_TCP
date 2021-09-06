@@ -24,7 +24,7 @@ public:
   T* getComponent(ComponentType type) {
     auto comp = components_.find(type);
     if (comp != components_.end()) 
-      return static_cast<T*>(comp->second);
+      return static_cast<T*>(comp->second.get());
 
     return nullptr;
   }
@@ -33,7 +33,7 @@ public:
   int32 getMaterialOffset();
 
   uint32 addComponent(Component*);
-  int8 setMaterial(Material*);
+  int32 setMaterial(Material*);
 
 protected:
   virtual ~Entity();

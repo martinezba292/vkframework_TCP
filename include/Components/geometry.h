@@ -3,16 +3,17 @@
 
 #include "Components/component.h"
 #include "vertex_buffer.h"
+#include <string>
 
 enum class PrimitiveType {
   kPrimitiveType_NONE = -1,
   kPrimitiveType_Triangle = 0,
   kPrimitiveType_Quad = 1,
   kPrimitiveType_Cube,
-  kPrimitiveType_Sphere
+  kPrimitiveType_Sphere,
+  kPrimitiveType_Terrain,
 };
 
-//struct ComponentUpdateData;
 class Geometry : public Component {
 public:
   Geometry();

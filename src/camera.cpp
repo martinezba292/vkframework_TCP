@@ -5,12 +5,12 @@
 
 Camera::Camera()
 {
-  position_ = { 0.0f, 0.0f, 20.0f };
+  position_ = { 0.0f, 0.0f, 2.0f };
   forward_ = { 0.0f, 0.0f, -1.0f };
   right_ = { 1.0f, 0.0f, 0.0f };
   up_ = { 0.0f, 1.0f, 0.0f };
   input_ = glm::vec3(0.0f);
-  speed_ = 5.0f;
+  speed_ = 10.0f;
   aspect_ = k_wWidth / (float)k_wHeight;
   lastCoords_ = { 400.0f, 300.0f };
   yaw_ = -75.3f;

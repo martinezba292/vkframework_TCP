@@ -49,11 +49,7 @@ namespace dev {
                                        VkImageViewType view_type, 
                                        uint32 mip_levels, 
                                        uint32 layers, 
-                                       VkImageAspectFlags flags,
-                                       VkComponentMapping mapping = { VK_COMPONENT_SWIZZLE_R, 
-                                                                      VK_COMPONENT_SWIZZLE_G, 
-                                                                      VK_COMPONENT_SWIZZLE_B, 
-                                                                      VK_COMPONENT_SWIZZLE_A });
+                                       VkImageAspectFlags flags);
 
     VkSampler createTextureSampler(Context* context, VkSamplerAddressMode address_mode, VkCompareOp compare_op, uint32 mip_levels, VkBorderColor border, VkBool32 anisotropy = VK_TRUE);
 

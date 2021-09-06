@@ -1,6 +1,7 @@
 #include "Components/geometry.h"
 #include "resource_manager.h"
 #include "dev/internal.h"
+#include <unordered_map>
 
 Geometry::Geometry()
 {
@@ -23,6 +24,7 @@ void Geometry::loadGeometry(VertexBuffer& buffer)
 {
   geometry_buffer_.copyBuffer(buffer);
 }
+
 
 void Geometry::create()
 {

@@ -1,6 +1,5 @@
 #include "static_helpers.h"
 #include "internal.h"
-#include <stdexcept>
 #include "Components/texture.h"
 
 
@@ -9,11 +8,10 @@
 QueueFamilyIndices dev::StaticHelpers::findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR& surface)
 {
   uint32 queueFamilyCount = 0;
-
   vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
   std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
   vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
   QueueFamilyIndices indices;
   int32 i = 0;
   for (const auto& queueFamily : queueFamilies) {
@@ -104,9 +102,9 @@ std::vector<char> dev::StaticHelpers::loadShader(const std::string& filename)
 {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-  //assert(file.is_open());
-  if (!file.is_open())
-    throw(std::runtime_error("Failed to open shader text file"));
+  assert(file.is_open());
+  /*if (!file.is_open())
+    throw(std::runtime_error("Failed to open shader text file"));*/
 
   size_t filesize = (size_t)file.tellg();//end of file
   std::vector<char> buffer(filesize);
@@ -191,9 +189,6 @@ VkPipeline dev::StaticHelpers::createPipeline(Context* context,
 
 
   /*Vertex Input*/
-  /*Get vertex data from the resource manager*/
-  //const Resources* mainResources = ResourceManager::Get()->getResources();
-
   VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
   vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
   vertexInputInfo.vertexBindingDescriptionCount = 1;
@@ -235,6 +230,7 @@ VkPipeline dev::StaticHelpers::createPipeline(Context* context,
   rasterizer.depthClampEnable = VK_FALSE;
   rasterizer.rasterizerDiscardEnable = VK_FALSE;
   rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+                           //VK_POLYGON_MODE_LINE;
   rasterizer.lineWidth = 1.0f;
   rasterizer.cullMode = cull_mode;
   rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -315,8 +311,8 @@ VkPipeline dev::StaticHelpers::createPipeline(Context* context,
   pipelineInfo.basePipelineIndex = -1;
 
   VkPipeline new_pipeline;
-  //assert(vkCreateGraphicsPipelines(context_->logDevice_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &context_->pipeline) == VK_SUCCESS);
-  vkCreateGraphicsPipelines(context->logDevice_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &new_pipeline);
+  assert(vkCreateGraphicsPipelines(context->logDevice_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &new_pipeline) == VK_SUCCESS);
+  //vkCreateGraphicsPipelines(context->logDevice_, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &new_pipeline);
 
   vkDestroyShaderModule(context->logDevice_, frag_module, nullptr);
   vkDestroyShaderModule(context->logDevice_, vert_module, nullptr);
@@ -364,13 +360,13 @@ VkFormat dev::StaticHelpers::getTextureFormat(TextureFormat format)
 
 /***************************************************************************************************/
 
-VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage& image, VkFormat format, VkImageViewType view_type, uint32 mip_levels, uint32 layers, VkImageAspectFlags flags, VkComponentMapping mapping)
+VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage& image, VkFormat format, VkImageViewType view_type, uint32 mip_levels, uint32 layers, VkImageAspectFlags flags)
 {
   VkImageViewCreateInfo viewInfo{ VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
   viewInfo.image = image;
   viewInfo.viewType = view_type;
   viewInfo.format = format;
-  viewInfo.components = mapping;
+  viewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
   viewInfo.subresourceRange = {};
   viewInfo.subresourceRange.aspectMask = flags;
   viewInfo.subresourceRange.baseMipLevel = 0;
@@ -379,7 +375,7 @@ VkImageView dev::StaticHelpers::createTextureImageView(VkDevice device, VkImage&
   viewInfo.subresourceRange.layerCount = layers;
 
   VkImageView view;
-  VkResult res = vkCreateImageView(device, &viewInfo, nullptr, &view);
+  assert(vkCreateImageView(device, &viewInfo, nullptr, &view) == VK_SUCCESS);
 
   return view;
 }
@@ -413,8 +409,8 @@ VkSampler dev::StaticHelpers::createTextureSampler(Context* context, VkSamplerAd
   samplerInfo.maxLod = static_cast<float>(mip_levels);
 
   VkSampler sampler;
-  //assert(vkCreateSampler(device_, &samplerInfo, nullptr, &sampler_) == VK_SUCCESS);
-  VkResult res = vkCreateSampler(context->logDevice_, &samplerInfo, nullptr, &sampler);
+  assert(vkCreateSampler(context->logDevice_, &samplerInfo, nullptr, &sampler) == VK_SUCCESS);
+
   return sampler;
 }
 

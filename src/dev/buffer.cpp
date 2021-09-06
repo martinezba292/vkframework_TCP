@@ -26,7 +26,7 @@ vkdev::Buffer::Buffer(const Buffer& other)
   memory_ = other.memory_;
 }
 
-int8 vkdev::Buffer::createBuffer(Context* context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props)
+int64_t vkdev::Buffer::createBuffer(Context* context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props)
 {
   if (device_) {
     std::cout << "\nBuffer already created";
@@ -55,7 +55,7 @@ int8 vkdev::Buffer::createBuffer(Context* context, VkDeviceSize size, VkBufferUs
   vkAllocateMemory(device_, &alloc_info, nullptr, &memory_);
   vkBindBufferMemory(device_, buffer_, memory_, 0);
 
-  return 0;
+  return mem_requirements.size;
 }
 
 int8 vkdev::Buffer::copyBuffer(Context* context, Buffer& src_buffer, VkDeviceSize size, VkDeviceSize dst_offset)

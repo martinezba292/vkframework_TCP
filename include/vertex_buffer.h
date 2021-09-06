@@ -9,6 +9,12 @@ struct Vertex {
   glm::vec3 vertex;
   glm::vec3 normal;
   glm::vec2 uv;
+
+  //Used for loadObj function in resource manager
+  //Need to use Vertex struct with unordered map
+  bool operator ==(const Vertex& other) const {
+    return vertex == other.vertex && normal == other.normal && uv == other.uv;
+  }
 };
 
 class VertexBuffer {

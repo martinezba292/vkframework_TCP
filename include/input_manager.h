@@ -9,6 +9,7 @@ enum KeyCode {
   kKeyCode_A = 1,
   kKeyCode_S = 2,
   kKeyCode_D = 3,
+  kKeyCode_ESC = 4,
   kKeyCode_MAX
 };
 

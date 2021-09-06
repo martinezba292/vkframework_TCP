@@ -89,11 +89,11 @@ void main() {
         vec3 L = normalize(vec3(light_position - worldPosition));
         float distance = length(light_position - worldPosition);
         float attenuation = 1.0 / (distance * distance);
-        float c = step(distance, 5.0);
+        float c = step(distance, 4.0);
         vec3 radiance = sb.lights[i].lightcolor.xyz * attenuation;
         Lo += c * radiance * SpecularBRDF(L, V, N, ubo.metallic, roughness, ubo.albedo.xyz);
     }
-    vec3 color = vec3(ubo.albedo.x, ubo.albedo.y, ubo.albedo.z) * 0.03;
+    vec3 color = ubo.albedo.xyz * 0.03;
     color += Lo;
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(0.4545));

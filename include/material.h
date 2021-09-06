@@ -12,15 +12,14 @@ enum class MaterialType {
   kMaterialType_BasicPBR = 1,
   kMaterialType_PBRIBL,
   kMaterialType_TextureSampler,
+  kMaterialType_Noise,
   kMaterialType_Skybox,
-  //kMaterialType_EquirectangularCube,
   kMaterialType_MAX,
 };
 
 class Camera;
 class Texture;
 union UniformBlocks;
-struct ComponentUpdateData;
 class Material : public Referenced {
 public:
   Material();
@@ -33,9 +32,8 @@ public:
   int32 setTextureCubemap(Texture& texture, Camera& camera);
   int32 setExposure(float exposure);
   int32 setGammaCorrection(float gamma);
-
-  /////////////NEED TO PASS BRDF, IRRADIANCE AND PREFILTERED TEXTURES TO IBL MATERIAL
-  //int32 setSamplerIrradiance()
+  int32 setRandomNoise(float rand);
+  int32 setNoiseAmplification(float amp);
 
   void updateMaterialSettings(glm::mat4 model, const uint32 buffer_offset, const uint64_t buffer_padding);
 

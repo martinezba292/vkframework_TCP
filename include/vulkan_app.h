@@ -9,6 +9,10 @@ struct FrameData;
 struct DebugUtils;
 struct Resources;
 class UserMain;
+namespace vkdev {
+  class VkTexture;
+}
+
 class VulkanApp {
 
 public:
@@ -80,6 +84,8 @@ private:
   void generateIrradianceCube();
   void generatePrefilteredCube();
   uint32 generateIBLTextures();
+  void generateNoiseTexture(uint32 width, uint32 height);
+  void updateNoiseTexture(vkdev::VkTexture* texture);
 
   int32 presentImage(uint32 index);
 

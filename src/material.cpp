@@ -83,10 +83,10 @@ int32 Material::setMaterialTexture(Texture& texture)
 
 int32 Material::setTextureCubemap(Texture& texture, Camera& camera)
 {
-  //if (type_ != MaterialType::kMaterialType_Skybox) {
-  //  printf("Wrong Material type");
-  //  return -1;
-  //}
+  if (type_ != MaterialType::kMaterialType_Skybox) {
+    printf("Wrong Material type");
+    return -1;
+  }
 
   if (texture.getType() != TextureType::kTextureType_Cubemap) {
     printf("Wrong texture type");
@@ -128,6 +128,28 @@ int32 Material::setGammaCorrection(float gamma)
   return 0;
 }
 
+int32 Material::setRandomNoise(float rand)
+{
+  if (type_ != MaterialType::kMaterialType_Noise) {
+    printf("Wrong Material type");
+    return -1;
+  }
+
+  settings_->noiseBlock.randc = rand;
+  return 0;
+}
+
+int32 Material::setNoiseAmplification(float amp)
+{
+  if (type_ != MaterialType::kMaterialType_Noise) {
+    printf("Wrong Material type");
+    return -1;
+  }
+
+  settings_->noiseBlock.amplification = amp;
+  return 0;
+}
+
 void Material::updateMaterialSettings(glm::mat4 model, const uint32 buffer_offset, const uint64_t buffer_padding)
 {
   ResourceManager* rm = ResourceManager::Get();
@@ -137,10 +159,6 @@ void Material::updateMaterialSettings(glm::mat4 model, const uint32 buffer_offse
     settings_->skyboxBlock.viewStatic[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     break;
   }
-  //case MaterialType::kMaterialType_EquirectangularCube: {
-  //  settings_->skyboxBlock.viewStatic = rm->getCamera().getView();
-  //  break;
-  //}
   default: {
     settings_->unlitBlock.model = model;
     break;
